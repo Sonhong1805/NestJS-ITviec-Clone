@@ -7,6 +7,10 @@ import { LOGIN_TYPE, ROLE } from 'src/commons/enums/user.enum';
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
+import { RefreshTokenDto } from './dto/refreshToken.dto';
+import { User } from 'src/databases/entities/user.entity';
+import { LoginGoogleDto } from './dto/login-google.dto';
+import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
@@ -59,21 +63,123 @@ export class AuthService {
         HttpStatus.UNAUTHORIZED,
       );
     }
-    const payload = {
-      id: userRecord.id,
-      username: userRecord.username,
-      loginType: userRecord.loginType,
-      role: userRecord.role,
-    };
+    const payload = await this.getPayload(userRecord);
+    const { accessToken, refreshToken } = await this.signToken(payload);
 
-    const accessToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.get('jwtAuth').jwtTokenSecret,
-      expiresIn: '15m',
-    });
     return {
       message: 'Login successfully',
       result: {
         accessToken,
+        refreshToken,
+      },
+    };
+  }
+
+  async refresh(body: RefreshTokenDto) {
+    const { refreshToken } = body;
+    const payloadRefresh = await this.jwtService.verifyAsync(refreshToken, {
+      secret: this.configService.get('jwtAuth').jwtRefreshTokenSecret,
+    });
+    const userRecord = await this.userRepository.findOneBy({
+      id: payloadRefresh.id,
+    });
+
+    if (!userRecord) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const payload = await this.getPayload(userRecord);
+    const { accessToken, refreshToken: newRefreshToken } =
+      await this.signToken(payload);
+    return {
+      message: 'Refresh Token successfully',
+      result: {
+        accessToken,
+        refreshToken: newRefreshToken,
+      },
+    };
+  }
+
+  async getPayload(user: User) {
+    return {
+      id: user.id,
+      username: user.username,
+      loginType: user.loginType,
+      role: user.role,
+    };
+  }
+
+  async signToken(payloadAccess) {
+    const payloadRefresh = {
+      id: payloadAccess.id,
+    };
+
+    const accessToken = await this.jwtService.signAsync(payloadAccess, {
+      secret: this.configService.get('jwtAuth').jwtAccessTokenSecret,
+      expiresIn: '15m',
+    });
+
+    const refreshToken = await this.jwtService.signAsync(payloadRefresh, {
+      secret: this.configService.get('jwtAuth').jwtRefreshTokenSecret,
+      expiresIn: '7d',
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  async loginGoogle(body: LoginGoogleDto) {
+    const { token } = body;
+    const ggClientId = this.configService.get('google').clientId;
+    const ggClientSecret = this.configService.get('google').clientSecret;
+    const oAuthClient = new OAuth2Client(ggClientId, ggClientSecret);
+    const ggLoginTicket = await oAuthClient.verifyIdToken({
+      idToken: token,
+      audience: ggClientId,
+    });
+
+    const { email_verified, email, name } = (await ggLoginTicket).getPayload();
+    if (!email_verified) {
+      throw new HttpException(
+        'Email is not verified' + email,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    let userRecord = await this.userRepository.findOneBy({
+      email,
+      loginType: LOGIN_TYPE.GOOGLE,
+    });
+
+    if (userRecord && userRecord.loginType === LOGIN_TYPE.EMAIL) {
+      throw new HttpException(
+        'Email use to login:' + email,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (!userRecord) {
+      userRecord = await this.userRepository.save({
+        email,
+        username: name,
+        loginType: LOGIN_TYPE.GOOGLE,
+      });
+
+      await this.applicantRepository.save({
+        userId: userRecord.id,
+      });
+    }
+
+    const payload = await this.getPayload(userRecord);
+    const { accessToken, refreshToken: newRefreshToken } =
+      await this.signToken(payload);
+    return {
+      message: 'Login with google successfully',
+      result: {
+        accessToken,
+        refreshToken: newRefreshToken,
       },
     };
   }
