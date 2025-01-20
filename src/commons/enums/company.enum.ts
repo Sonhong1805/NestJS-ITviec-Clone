@@ -1,8 +1,8 @@
 export enum COMPANY_ADDRESS {
   HA_NOI = 'Ha Noi',
   DA_NANG = 'Da Nang',
-  HO_CHI_MINH = 'Ho CHi Minh',
-  OTHERS = 'OTHERS',
+  HO_CHI_MINH = 'Ho Chi Minh',
+  OTHERS = 'Others',
 }
 
 export enum COMPANY_TYPE {

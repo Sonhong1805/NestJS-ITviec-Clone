@@ -1,3 +1,4 @@
+import { MailModule } from './modules/mail/mail.module';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -23,6 +24,7 @@ import { AuthGuard } from './modules/auth/auth.guard';
         secret: configService.get('jwtAuth').JWT_TOKEN_SECRET,
       }),
     }),
+    MailModule,
     AuthModule,
   ],
   controllers: [AppController],

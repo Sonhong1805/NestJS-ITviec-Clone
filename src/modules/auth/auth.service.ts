@@ -11,6 +11,11 @@ import { RefreshTokenDto } from './dto/refreshToken.dto';
 import { User } from 'src/databases/entities/user.entity';
 import { LoginGoogleDto } from './dto/login-google.dto';
 import { OAuth2Client } from 'google-auth-library';
+import { RegisterCompanyDto } from './dto/register-company.dto';
+import { CompanyRepository } from 'src/databases/repositories/company.repository';
+import { DataSource } from 'typeorm';
+import { Company } from 'src/databases/entities/company.entity';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +24,9 @@ export class AuthService {
     private readonly applicantRepository: ApplicantRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly companyRepository: CompanyRepository,
+    private readonly dataSource: DataSource,
+    private readonly mailService: MailService,
   ) {}
 
   async register(body: RegisterUserDto) {
@@ -40,6 +48,13 @@ export class AuthService {
     await this.applicantRepository.save({
       userId: newUser.id,
     });
+
+    await this.mailService.sendMail(
+      email,
+      'welcome to ITviec',
+      'welcome-applicant',
+      { name: username, email: email },
+    );
 
     return {
       message: 'Register user successfully',
@@ -182,5 +197,52 @@ export class AuthService {
         refreshToken: newRefreshToken,
       },
     };
+  }
+
+  async registerCompany(body: RegisterCompanyDto) {
+    const {
+      username,
+      email,
+      password,
+      companyName,
+      companyAddress,
+      companyWebsite,
+    } = body;
+
+    const userRecord = await this.userRepository.findOneBy({ email });
+    if (userRecord) {
+      throw new HttpException('Email is already exist', HttpStatus.BAD_REQUEST);
+    }
+
+    const hashPassword = await argon2.hash(password);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+
+    try {
+      await queryRunner.startTransaction();
+      const newUser = await queryRunner.manager.save(User, {
+        username,
+        email,
+        password: hashPassword,
+        loginType: LOGIN_TYPE.EMAIL,
+        role: ROLE.COMPANY,
+      });
+
+      await queryRunner.manager.save(Company, {
+        userId: newUser.id,
+        name: companyName,
+        location: companyAddress,
+        website: companyWebsite,
+      });
+      await queryRunner.commitTransaction();
+
+      return {
+        message: 'Register company successfully',
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
   }
 }
