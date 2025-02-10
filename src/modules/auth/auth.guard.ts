@@ -9,6 +9,8 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY } from 'src/commons/decorators/public.decorator';
+import { ROLES_KEY } from 'src/commons/decorators/roles.decorator';
+import { ROLE } from 'src/commons/enums/user.enum';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -30,16 +32,27 @@ export class AuthGuard implements CanActivate {
     if (!token) {
       throw new UnauthorizedException();
     }
+
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get('jwtAuth').jwtTokenSecret,
+        secret: this.configService.get('jwtAuth').jwtAccessTokenSecret,
       });
       request['user'] = payload;
     } catch (error) {
       throw new UnauthorizedException();
     }
 
-    return true;
+    const requiredRoles = this.reflector.getAllAndOverride<ROLE[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (!requiredRoles) {
+      return true;
+    }
+
+    const { user } = context.switchToHttp().getRequest();
+    return requiredRoles.some((role) => user.role?.includes(role));
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {

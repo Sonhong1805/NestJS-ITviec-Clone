@@ -12,7 +12,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './modules/auth/auth.guard';
 import { StorageModule } from './modules/storage/storage.module';
-
+import { SkillModule } from './modules/skill/skill.module';
+import { IndustryModule } from './modules/industry/industry.module';
+import { CompanyModule } from './modules/company/company.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ load: [configuration], isGlobal: true }),
@@ -28,6 +30,9 @@ import { StorageModule } from './modules/storage/storage.module';
     MailModule,
     AuthModule,
     StorageModule,
+    SkillModule,
+    IndustryModule,
+    CompanyModule,
   ],
   controllers: [AppController],
   providers: [

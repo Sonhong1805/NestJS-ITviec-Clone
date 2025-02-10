@@ -10,13 +10,6 @@ import { RegisterCompanyDto } from './dto/register-company.dto';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-  @Get('')
-  test() {
-    return {
-      result: 'test',
-    };
-  }
-
   @Public()
   @Post('register')
   register(@Body() body: RegisterUserDto) {
