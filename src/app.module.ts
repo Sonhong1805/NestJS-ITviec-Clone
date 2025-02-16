@@ -15,6 +15,7 @@ import { StorageModule } from './modules/storage/storage.module';
 import { SkillModule } from './modules/skill/skill.module';
 import { IndustryModule } from './modules/industry/industry.module';
 import { CompanyModule } from './modules/company/company.module';
+import { ManuscriptModule } from './modules/manuscript/manuscript.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ load: [configuration], isGlobal: true }),
@@ -33,6 +34,7 @@ import { CompanyModule } from './modules/company/company.module';
     SkillModule,
     IndustryModule,
     CompanyModule,
+    ManuscriptModule,
   ],
   controllers: [AppController],
   providers: [
