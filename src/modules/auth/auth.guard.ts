@@ -37,6 +37,7 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: this.configService.get('jwtAuth').jwtAccessTokenSecret,
       });
+
       request['user'] = payload;
     } catch (error) {
       throw new UnauthorizedException();
@@ -52,6 +53,7 @@ export class AuthGuard implements CanActivate {
     }
 
     const { user } = context.switchToHttp().getRequest();
+
     return requiredRoles.some((role) => user.role?.includes(role));
   }
 
