@@ -30,6 +30,7 @@ export default () => ({
     host: process.env.MAIL_HOST || '',
     port: process.env.MAIL_PORT || '',
   },
+  redisUri: process.env.REDIS_URI || '',
 });
 
 export const validateEnvironments = (): void => {

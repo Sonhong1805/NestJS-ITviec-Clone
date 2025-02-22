@@ -6,12 +6,18 @@ import { CompanyRepository } from 'src/databases/repositories/company.repository
 import { ManuscriptRepository } from 'src/databases/repositories/manuscript.repository';
 import { DataSource } from 'typeorm';
 import { UpsertManuscriptDto } from './dto/upsert-manuscript.dto';
+import { ManuscriptQueriesDto } from './dto/manuscript-queries.dto';
+import { convertKeySortManuscript } from 'src/commons/utils/helper';
+import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript-skill.repository';
+import { ResdisService } from '../redis/redis.service';
 
 @Injectable()
 export class ManuscriptService {
   constructor(
     private readonly manuscriptRepository: ManuscriptRepository,
+    private readonly manuscriptSkillRepository: ManuscriptSkillRepository,
     private readonly companyRepository: CompanyRepository,
+    private readonly resdisService: ResdisService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -53,15 +59,195 @@ export class ManuscriptService {
   }
 
   async update(id: number, body: UpsertManuscriptDto, user: User) {
+    const findCompany = await this.companyRepository.findOneBy({
+      userId: user.id,
+    });
+
+    const findManuscript = await this.manuscriptRepository.findOne({
+      where: {
+        id,
+      },
+    });
+
+    if (!findManuscript) {
+      throw new HttpException('Manuscript not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (findCompany.id !== findManuscript.companyId) {
+      throw new HttpException('Manuscript forbidden', HttpStatus.FORBIDDEN);
+    }
+
+    const { skillIds } = body;
+    delete body.skillIds;
+
+    const updatedManuscript = await this.manuscriptRepository.save({
+      ...findManuscript,
+      ...body,
+    });
+
+    await this.manuscriptSkillRepository.delete({ manuscriptId: id });
+
+    const manuscriptSkills = skillIds.map((skillId) => ({
+      manuscriptId: findManuscript.id,
+      skillId,
+    }));
+
+    await this.manuscriptSkillRepository.save(manuscriptSkills);
+
     return {
       message: 'Update manuscript successfully',
-      result: '',
+      result: updatedManuscript,
     };
   }
 
-  async getDetail(id: number) {}
+  async getDetail(id: number) {
+    const manuKey = 'manu' + id;
+    const manuscript = await this.resdisService.getKey(manuKey);
+    let findManuscript: Manuscript;
 
-  async getAll(queries: any) {}
+    if (!manuscript) {
+      findManuscript = await this.manuscriptRepository.findOne({
+        where: {
+          id,
+        },
+      });
+
+      if (!findManuscript) {
+        throw new HttpException('Not found', HttpStatus.NOT_FOUND);
+      }
+
+      await this.resdisService.setKey(manuKey, JSON.stringify(findManuscript));
+    } else {
+      findManuscript = JSON.parse(manuscript);
+    }
+
+    return {
+      message: 'Create manuscript successfully',
+      result: findManuscript,
+    };
+  }
+
+  async getAll(queries: ManuscriptQueriesDto) {
+    const {
+      page,
+      limit,
+      keyword,
+      companyAddress,
+      companyTypes,
+      levels,
+      industryIds,
+      minSalary,
+      maxSalary,
+      workingModels,
+      sort,
+    } = queries;
+
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.manuscriptRepository
+      .createQueryBuilder('manuscript')
+      .leftJoin('manuscript.company', 'c')
+      .leftJoin('manuscript.manuscriptSkills', 'm')
+      .leftJoin('m.skill', 's')
+      .select([
+        'manuscript.id AS "id"',
+        'manuscript.title AS "title"',
+        'manuscript.minSalary AS "minSalary"',
+        'manuscript.maxSalary AS "maxSalary"',
+        'manuscript.summary AS "summary"',
+        'manuscript.level AS "level"',
+        'manuscript.workingModel AS "workingModel"',
+        'manuscript.createdAt AS "createdAt"',
+        'c.id AS "companyId"',
+        'c.name AS "companyName"',
+        'c.location AS "companyAddress"',
+        'c.companySize AS "companySize"',
+        'c.companyType AS "companyType"',
+        'c.industry AS "companyIndustry"',
+        'c.logo AS "companyLogo"',
+        "JSON_AGG(json_build_object('id',s.id,'name', s.name)) AS manuscriptSkills",
+      ])
+      .groupBy('manuscript.id, c.id');
+
+    if (keyword) {
+      queryBuilder
+        .andWhere('s.name ILIKE :keyword', {
+          keyword: `%${keyword}%`,
+        })
+        .orWhere('manuscript.title ILIKE :keyword', {
+          keyword: `%${keyword}%`,
+        })
+        .orWhere('manuscript.summary ILIKE :keyword', {
+          keyword: `%${keyword}%`,
+        })
+        .orWhere('c.name ILIKE :keyword', {
+          keyword: `%${keyword}%`,
+        });
+    }
+
+    if (sort) {
+      const order = convertKeySortManuscript(sort);
+
+      for (const key of Object.keys(order)) {
+        queryBuilder.addOrderBy(key, order[key]);
+      }
+    } else {
+      queryBuilder.addOrderBy('manuscript.createdAt', 'DESC');
+    }
+
+    if (companyAddress) {
+      queryBuilder.andWhere('c.location = :address', {
+        address: companyAddress,
+      });
+    }
+    if (companyTypes) {
+      queryBuilder.andWhere('c.companyType IN (:...types)', {
+        types: companyTypes,
+      });
+    }
+    if (levels) {
+      queryBuilder.andWhere('manuscript.level IN (:...levels)', {
+        levels,
+      });
+    }
+    if (workingModels) {
+      queryBuilder.andWhere('manuscript.workingModel IN (:...workingModels)', {
+        workingModels,
+      });
+    }
+    if (industryIds) {
+      queryBuilder.andWhere('c.industry IN (:...industryIds)', {
+        industryIds,
+      });
+    }
+
+    if (minSalary && maxSalary) {
+      queryBuilder
+        .andWhere('manuscript.minSalary >= :minSalary', {
+          minSalary,
+        })
+        .andWhere('manuscript.maxSalary <= :maxSalary', {
+          maxSalary,
+        });
+    }
+
+    queryBuilder.limit(limit).offset(skip);
+
+    const data = await queryBuilder.getRawMany();
+    const totalItems = await queryBuilder.getCount();
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      message: 'get all manuscript',
+      result: {
+        totalPages,
+        totalItems,
+        page,
+        limit,
+        data,
+      },
+    };
+  }
 
   async delete(id: number, user: User) {
     const findCompany = await this.companyRepository.findOneBy({
@@ -75,6 +261,8 @@ export class ManuscriptService {
     }
 
     await this.manuscriptRepository.softDelete(id);
+
+    await this.resdisService.setKey('manu' + id, '');
 
     return {
       message: 'Delete manuscript successfully',

@@ -71,4 +71,7 @@ export class Company extends BaseEntity {
 
   @OneToMany(() => Manuscript, (manuscripts) => manuscripts.company)
   manuscripts: Manuscript[];
+
+  @Column('integer', { name: 'industry_id', nullable: true, unique: true })
+  industryId: number | null;
 }

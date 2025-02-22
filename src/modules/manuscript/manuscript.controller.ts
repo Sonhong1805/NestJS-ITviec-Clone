@@ -16,6 +16,7 @@ import { GetCurrentUser } from 'src/commons/decorators/get-current-user.decorato
 import { User } from 'src/databases/entities/user.entity';
 import { UpsertManuscriptDto } from './dto/upsert-manuscript.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { ManuscriptQueriesDto } from './dto/manuscript-queries.dto';
 
 @ApiBearerAuth()
 @Controller('manuscript')
@@ -51,7 +52,7 @@ export class ManuscriptController {
 
   @Public()
   @Get('')
-  getAll(@Query() queries: any) {
+  getAll(@Query('') queries: ManuscriptQueriesDto) {
     return this.manuscriptService.getAll(queries);
   }
 }
