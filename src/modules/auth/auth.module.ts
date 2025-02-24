@@ -7,9 +7,10 @@ import { ApplicantRepository } from 'src/databases/repositories/applicant.reposi
 import { CompanyRepository } from 'src/databases/repositories/company.repository';
 import { MailModule } from '../mail/mail.module';
 import { MailService } from '../mail/mail.service';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
-  imports: [MailModule],
+  imports: [MailModule, BullModule],
   controllers: [AuthController],
   providers: [
     AuthService,
@@ -19,5 +20,6 @@ import { MailService } from '../mail/mail.service';
     CompanyRepository,
     MailService,
   ],
+  exports: [BullModule],
 })
 export class AuthModule {}

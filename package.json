@@ -38,6 +38,7 @@
     "@supabase/storage-js": "^2.7.1",
     "@supabase/supabase-js": "^2.48.1",
     "argon2": "^0.41.1",
+    "bullmq": "^5.41.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "google-auth-library": "^9.15.0",
