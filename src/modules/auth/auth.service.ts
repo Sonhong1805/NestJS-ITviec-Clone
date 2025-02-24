@@ -16,6 +16,8 @@ import { CompanyRepository } from 'src/databases/repositories/company.repository
 import { DataSource } from 'typeorm';
 import { Company } from 'src/databases/entities/company.entity';
 import { MailService } from '../mail/mail.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +29,7 @@ export class AuthService {
     private readonly companyRepository: CompanyRepository,
     private readonly dataSource: DataSource,
     private readonly mailService: MailService,
+    @InjectQueue('mail-queue') private mailQueue: Queue,
   ) {}
 
   async register(body: RegisterUserDto) {
@@ -49,12 +52,17 @@ export class AuthService {
       userId: newUser.id,
     });
 
-    await this.mailService.sendMail(
+    // await this.mailService.sendMail(
+    //   email,
+    //   'welcome to ITviec',
+    //   'welcome-applicant',
+    //   { name: username, email: email },
+    // );
+
+    await this.mailQueue.add('send-mail-applicant', {
+      name: username,
       email,
-      'welcome to ITviec',
-      'welcome-applicant',
-      { name: username, email: email },
-    );
+    });
 
     return {
       message: 'Register user successfully',
@@ -235,6 +243,12 @@ export class AuthService {
         website: companyWebsite,
       });
       await queryRunner.commitTransaction();
+
+      await this.mailQueue.add('send-mail-company', {
+        name: username,
+        email,
+        company: companyName,
+      });
 
       return {
         message: 'Register company successfully',
