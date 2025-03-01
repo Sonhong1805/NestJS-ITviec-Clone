@@ -45,8 +45,8 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 
   const config = new DocumentBuilder()
-    .setTitle('IT VIEC API')
-    .setDescription('API for IT viec')
+    .setTitle('ITviec API')
+    .setDescription('API for ITviec')
     .setVersion(apiVersion)
     .addBearerAuth()
     .build();
@@ -54,8 +54,8 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT') || 3000;
-  await app.listen(process.env.PORT);
+  const port = configService.get<number>('PORT') || 3001;
+  await app.listen(port);
   Logger.log(`Application started on port: ${port}`);
 
   if (module.hot) {

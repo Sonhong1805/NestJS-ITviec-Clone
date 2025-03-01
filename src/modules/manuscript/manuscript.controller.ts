@@ -17,6 +17,7 @@ import { User } from 'src/databases/entities/user.entity';
 import { UpsertManuscriptDto } from './dto/upsert-manuscript.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { ManuscriptQueriesDto } from './dto/manuscript-queries.dto';
+import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
 
 @ApiBearerAuth()
 @Controller('manuscript')
@@ -40,8 +41,8 @@ export class ManuscriptController {
 
   @Public()
   @Get(':id')
-  getDetail(@Param('id') id: number) {
-    return this.manuscriptService.getDetail(id);
+  getDetail(@Param('id') id: number, @GetCurrentUser() user: User) {
+    return this.manuscriptService.getDetail(id, user);
   }
 
   @Roles(ROLE.COMPANY)
@@ -54,5 +55,14 @@ export class ManuscriptController {
   @Get('')
   getAll(@Query('') queries: ManuscriptQueriesDto) {
     return this.manuscriptService.getAll(queries);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('viewed')
+  getAllByViewed(
+    @Query('') queries: CommonQueryDto,
+    @GetCurrentUser() user: User,
+  ) {
+    return this.manuscriptService.getAllByViewed(queries, user);
   }
 }
