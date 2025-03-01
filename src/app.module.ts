@@ -19,6 +19,7 @@ import { ManuscriptModule } from './modules/manuscript/manuscript.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ApplicationModule } from './modules/application/application.module';
+import { ApplicantModule } from './modules/applicant/applicant.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ load: [configuration], isGlobal: true }),
@@ -49,6 +50,7 @@ import { ApplicationModule } from './modules/application/application.module';
       }),
     }),
     ApplicationModule,
+    ApplicantModule,
   ],
   controllers: [AppController],
   providers: [

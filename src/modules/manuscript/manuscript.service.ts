@@ -10,12 +10,15 @@ import { ManuscriptQueriesDto } from './dto/manuscript-queries.dto';
 import { convertKeySortManuscript } from 'src/commons/utils/helper';
 import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript-skill.repository';
 import { ResdisService } from '../redis/redis.service';
+import { ManuscriptViewRepository } from 'src/databases/repositories/manuscript-view.repository';
+import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
 
 @Injectable()
 export class ManuscriptService {
   constructor(
     private readonly manuscriptRepository: ManuscriptRepository,
     private readonly manuscriptSkillRepository: ManuscriptSkillRepository,
+    private readonly manuscriptViewRepository: ManuscriptViewRepository,
     private readonly companyRepository: CompanyRepository,
     private readonly resdisService: ResdisService,
     private readonly dataSource: DataSource,
@@ -100,30 +103,71 @@ export class ManuscriptService {
     };
   }
 
-  async getDetail(id: number) {
-    const manuKey = 'manu' + id;
-    const manuscript = await this.resdisService.getKey(manuKey);
-    let findManuscript: Manuscript;
+  async getDetail(id: number, user: User) {
+    const findManuscript = await this.manuscriptRepository.findOne({
+      where: {
+        id,
+      },
+    });
 
-    if (!manuscript) {
-      findManuscript = await this.manuscriptRepository.findOne({
+    if (!findManuscript) {
+      throw new HttpException('not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (user) {
+      const findManuscriptView = await this.manuscriptViewRepository.findOne({
         where: {
-          id,
+          userId: user.id,
+          manuscriptId: id,
         },
       });
-
-      if (!findManuscript) {
-        throw new HttpException('Not found', HttpStatus.NOT_FOUND);
+      if (findManuscriptView) {
+        await this.manuscriptViewRepository.save({
+          ...findManuscriptView,
+          updatedAt: new Date(),
+        });
+      } else {
+        await this.manuscriptViewRepository.save({
+          userId: user.id,
+          manuscriptId: id,
+        });
       }
-
-      await this.resdisService.setKey(manuKey, JSON.stringify(findManuscript));
-    } else {
-      findManuscript = JSON.parse(manuscript);
     }
 
     return {
-      message: 'Create manuscript successfully',
+      message: 'get manuscript successfully',
       result: findManuscript,
+    };
+  }
+
+  async getAllByViewed(queries: CommonQueryDto, user: User) {
+    const { page, limit } = queries;
+    const skip = (page - 1) * limit;
+    const [data, total] = await this.manuscriptRepository.findAndCount({
+      where: {
+        manuscriptViews: {
+          userId: user.id,
+        },
+      },
+      skip,
+      take: limit,
+      order: {
+        manuscriptViews: {
+          updatedAt: 'DESC',
+        },
+      },
+    });
+
+    return {
+      message: 'get recent manuscripts successfully',
+      result: {
+        data,
+        metadata: {
+          total,
+          page,
+          limit,
+        },
+      },
     };
   }
 

@@ -54,6 +54,9 @@ export class Applicant extends BaseEntity {
   @Column('timestamp without time zone', { name: 'dob', nullable: true })
   dob: Date | null;
 
+  @Column('character varying', { name: 'avatar', nullable: true })
+  avatar: string | null;
+
   @OneToMany(
     () => ApplicantEducation,
     (applicantEducations) => applicantEducations.applicant,
