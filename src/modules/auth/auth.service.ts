@@ -29,6 +29,7 @@ export class AuthService {
     private readonly companyRepository: CompanyRepository,
     private readonly dataSource: DataSource,
     private readonly mailService: MailService,
+
     @InjectQueue('mail-queue') private mailQueue: Queue,
   ) {}
 
@@ -95,6 +96,21 @@ export class AuthService {
         accessToken,
         refreshToken,
       },
+    };
+  }
+
+  async account(user: User) {
+    const userInfo = await this.userRepository.findOne({
+      where: {
+        id: user.id,
+      },
+    });
+
+    delete userInfo.password;
+
+    return {
+      message: 'get user info successfully',
+      result: userInfo,
     };
   }
 
