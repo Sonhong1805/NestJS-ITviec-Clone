@@ -6,6 +6,10 @@ import { RefreshTokenDto } from './dto/refreshToken.dto';
 import { Public } from 'src/commons/decorators/public.decorator';
 import { LoginGoogleDto } from './dto/login-google.dto';
 import { RegisterCompanyDto } from './dto/register-company.dto';
+import { GetCurrentUser } from 'src/commons/decorators/get-current-user.decorator';
+import { User } from 'src/databases/entities/user.entity';
+import { Roles } from 'src/commons/decorators/roles.decorator';
+import { ROLE } from 'src/commons/enums/user.enum';
 
 @Controller('auth')
 export class AuthController {
@@ -20,6 +24,12 @@ export class AuthController {
   @Post('login')
   login(@Body() body: LoginDto) {
     return this.authService.login(body);
+  }
+
+  @Roles(ROLE.ADMIN, ROLE.APPLICANT, ROLE.COMPANY)
+  @Get('account')
+  account(@GetCurrentUser() user: User) {
+    return this.authService.account(user);
   }
 
   @Public()

@@ -12,6 +12,7 @@ import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript
 import { ResdisService } from '../redis/redis.service';
 import { ManuscriptViewRepository } from 'src/databases/repositories/manuscript-view.repository';
 import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
+import { ManuscriptSaveRepository } from 'src/databases/repositories/manuscript-save.repository';
 
 @Injectable()
 export class ManuscriptService {
@@ -22,6 +23,7 @@ export class ManuscriptService {
     private readonly companyRepository: CompanyRepository,
     private readonly resdisService: ResdisService,
     private readonly dataSource: DataSource,
+    private readonly manuscriptSaveRepository: ManuscriptSaveRepository,
   ) {}
 
   async create(body: UpsertManuscriptDto, user: User) {
@@ -114,13 +116,27 @@ export class ManuscriptService {
       throw new HttpException('not found', HttpStatus.NOT_FOUND);
     }
 
+    findManuscript['isUserFavourite'] = false;
+
     if (user) {
+      const findManuscriptSave = await this.manuscriptSaveRepository.findOne({
+        where: {
+          userId: user.id,
+          manuscriptId: id,
+        },
+      });
+
+      if (findManuscriptSave) {
+        findManuscript['isUserFavourite'] = true;
+      }
+
       const findManuscriptView = await this.manuscriptViewRepository.findOne({
         where: {
           userId: user.id,
           manuscriptId: id,
         },
       });
+
       if (findManuscriptView) {
         await this.manuscriptViewRepository.save({
           ...findManuscriptView,
@@ -310,6 +326,61 @@ export class ManuscriptService {
 
     return {
       message: 'Delete manuscript successfully',
+    };
+  }
+
+  async favorite(id: number, user: User) {
+    const manuscriptSave = await this.manuscriptSaveRepository.findOneBy({
+      manuscriptId: id,
+      userId: user.id,
+    });
+
+    if (manuscriptSave) {
+      await this.manuscriptSaveRepository.delete({
+        manuscriptId: id,
+        userId: user.id,
+      });
+    } else {
+      await this.manuscriptSaveRepository.save({
+        manuscriptId: id,
+        userId: user.id,
+      });
+    }
+
+    return {
+      message: '',
+    };
+  }
+
+  async getAllByFavorite(queries: CommonQueryDto, user: User) {
+    const { page, limit } = queries;
+    const skip = (page - 1) * limit;
+    const [data, total] = await this.manuscriptRepository.findAndCount({
+      where: {
+        manuscriptSaves: {
+          userId: user.id,
+        },
+      },
+      skip,
+      take: limit,
+      relations: ['manuscriptSaves'],
+      order: {
+        manuscriptSaves: {
+          createdAt: 'DESC',
+        },
+      },
+    });
+
+    return {
+      message: 'get all fa manuscripts successfully',
+      result: {
+        data,
+        metadata: {
+          total,
+          page,
+          limit,
+        },
+      },
     };
   }
 }
