@@ -10,9 +10,11 @@ export const REQUIRED_ENVS = [
 
 export default () => ({
   port: parseInt(process.env.PORT, 10) || 3000,
-  jwtAuth: {
-    jwtAccessTokenSecret: process.env.JWT_ACCESS_TOKEN_SECRET,
-    jwtRefreshTokenSecret: process.env.JWT_REFRESH_TOKEN_SECRET,
+  jwt: {
+    accessTokenSecret: process.env.JWT_ACCESS_TOKEN_SECRET,
+    accessTokenExpires: process.env.JWT_ACCESS_TOKEN_EXPIRES,
+    refreshTokenSecret: process.env.JWT_REFRESH_TOKEN_SECRET,
+    refreshTokenExpires: process.env.JWT_REFRESH_TOKEN_EXPIRES,
   },
   supabase: {
     key: process.env.SUPABASE_KEY || '',

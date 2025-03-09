@@ -29,5 +29,15 @@ export class MailProcessor extends WorkerHost {
         },
       );
     }
+    if (job.name === 'forgot-password') {
+      await this.mailService.sendMail(
+        job.data.email,
+        `${job.data.email}, reset your password`,
+        'forgot-password',
+        {
+          email: job.data.email,
+        },
+      );
+    }
   }
 }

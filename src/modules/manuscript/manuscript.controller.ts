@@ -12,7 +12,7 @@ import { ManuscriptService } from './manuscript.service';
 import { Public } from 'src/commons/decorators/public.decorator';
 import { Roles } from 'src/commons/decorators/roles.decorator';
 import { ROLE } from 'src/commons/enums/user.enum';
-import { GetCurrentUser } from 'src/commons/decorators/get-current-user.decorator';
+import { GetUser } from 'src/commons/decorators/get-current-user.decorator';
 import { User } from 'src/databases/entities/user.entity';
 import { UpsertManuscriptDto } from './dto/upsert-manuscript.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
@@ -26,7 +26,7 @@ export class ManuscriptController {
 
   @Roles(ROLE.COMPANY)
   @Post()
-  create(@Body() body: UpsertManuscriptDto, @GetCurrentUser() user: User) {
+  create(@Body() body: UpsertManuscriptDto, @GetUser() user: User) {
     return this.manuscriptService.create(body, user);
   }
 
@@ -34,20 +34,20 @@ export class ManuscriptController {
   update(
     @Param('id') id: number,
     @Body() body: UpsertManuscriptDto,
-    @GetCurrentUser() user: User,
+    @GetUser() user: User,
   ) {
     return this.manuscriptService.update(id, body, user);
   }
 
   @Public()
   @Get(':id')
-  getDetail(@Param('id') id: number, @GetCurrentUser() user: User) {
+  getDetail(@Param('id') id: number, @GetUser() user: User) {
     return this.manuscriptService.getDetail(id, user);
   }
 
   @Roles(ROLE.COMPANY)
   @Delete(':id')
-  delete(@Param('id') id: number, @GetCurrentUser() user: User) {
+  delete(@Param('id') id: number, @GetUser() user: User) {
     return this.manuscriptService.delete(id, user);
   }
 
@@ -59,25 +59,19 @@ export class ManuscriptController {
 
   @Roles(ROLE.APPLICANT)
   @Get('viewed')
-  getAllByViewed(
-    @Query('') queries: CommonQueryDto,
-    @GetCurrentUser() user: User,
-  ) {
+  getAllByViewed(@Query('') queries: CommonQueryDto, @GetUser() user: User) {
     return this.manuscriptService.getAllByViewed(queries, user);
   }
 
   @Roles(ROLE.APPLICANT)
   @Get('favorite')
-  getAllByFavorite(
-    @Query() queries: CommonQueryDto,
-    @GetCurrentUser() user: User,
-  ) {
+  getAllByFavorite(@Query() queries: CommonQueryDto, @GetUser() user: User) {
     return this.manuscriptService.getAllByFavorite(queries, user);
   }
 
   @Roles(ROLE.APPLICANT)
   @Post('favorite/:id')
-  favorite(@Param('id') id: number, @GetCurrentUser() user: User) {
+  favorite(@Param('id') id: number, @GetUser() user: User) {
     return this.manuscriptService.favorite(id, user);
   }
 }

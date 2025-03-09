@@ -1,15 +1,17 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refreshToken.dto';
 import { Public } from 'src/commons/decorators/public.decorator';
 import { LoginGoogleDto } from './dto/login-google.dto';
 import { RegisterCompanyDto } from './dto/register-company.dto';
-import { GetCurrentUser } from 'src/commons/decorators/get-current-user.decorator';
+import { GetUser } from 'src/commons/decorators/get-current-user.decorator';
 import { User } from 'src/databases/entities/user.entity';
 import { Roles } from 'src/commons/decorators/roles.decorator';
 import { ROLE } from 'src/commons/enums/user.enum';
+import { Request, Response } from 'express';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -22,31 +24,60 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  login(@Body() body: LoginDto) {
-    return this.authService.login(body);
+  login(
+    @Body() body: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.login(body, response);
   }
 
   @Roles(ROLE.ADMIN, ROLE.APPLICANT, ROLE.COMPANY)
   @Get('account')
-  account(@GetCurrentUser() user: User) {
+  account(@GetUser() user: User) {
     return this.authService.account(user);
   }
 
   @Public()
   @Post('login-google')
-  loginGoogle(@Body() body: LoginGoogleDto) {
-    return this.authService.loginGoogle(body);
+  loginGoogle(
+    @Body() body: LoginGoogleDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.loginGoogle(body, response);
   }
 
   @Public()
-  @Post('refresh')
-  refresh(@Body() body: RefreshTokenDto) {
-    return this.authService.refresh(body);
+  @Get('refresh')
+  refresh(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.refresh(request, response);
+  }
+
+  @Roles(ROLE.ADMIN, ROLE.APPLICANT, ROLE.COMPANY)
+  @Post('logout')
+  logout(
+    @GetUser() user: User,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.logout(user, response);
   }
 
   @Public()
   @Post('register-company')
   registerCompany(@Body() body: RegisterCompanyDto) {
     return this.authService.registerCompany(body);
+  }
+  @Public()
+  @Post('forgot-password')
+  forgotPassword(@Body() body: ForgotPasswordDto) {
+    return this.authService.forgotPassword(body);
+  }
+
+  @Public()
+  @Post('reset-password')
+  resetPassword(@Body() body: ResetPasswordDto) {
+    return this.authService.resetPassword(body);
   }
 }

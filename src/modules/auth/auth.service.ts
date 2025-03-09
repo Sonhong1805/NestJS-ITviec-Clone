@@ -1,5 +1,10 @@
 import { ConfigService } from '@nestjs/config';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { UserRepository } from 'src/databases/repositories/user.repository';
 import * as argon2 from 'argon2';
@@ -7,17 +12,18 @@ import { LOGIN_TYPE, ROLE } from 'src/commons/enums/user.enum';
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
-import { RefreshTokenDto } from './dto/refreshToken.dto';
 import { User } from 'src/databases/entities/user.entity';
 import { LoginGoogleDto } from './dto/login-google.dto';
 import { OAuth2Client } from 'google-auth-library';
 import { RegisterCompanyDto } from './dto/register-company.dto';
-import { CompanyRepository } from 'src/databases/repositories/company.repository';
 import { DataSource } from 'typeorm';
 import { Company } from 'src/databases/entities/company.entity';
-import { MailService } from '../mail/mail.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { Request, Response } from 'express';
+import * as ms from 'ms';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -26,10 +32,7 @@ export class AuthService {
     private readonly applicantRepository: ApplicantRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly companyRepository: CompanyRepository,
     private readonly dataSource: DataSource,
-    private readonly mailService: MailService,
-
     @InjectQueue('mail-queue') private mailQueue: Queue,
   ) {}
 
@@ -53,48 +56,68 @@ export class AuthService {
       userId: newUser.id,
     });
 
-    // await this.mailService.sendMail(
+    // await this.mailQueue.add('send-mail-applicant', {
+    //   name: username,
     //   email,
-    //   'welcome to ITviec',
-    //   'welcome-applicant',
-    //   { name: username, email: email },
-    // );
-
-    await this.mailQueue.add('send-mail-applicant', {
-      name: username,
-      email,
-    });
+    // });
 
     return {
       message: 'Register user successfully',
     };
   }
 
-  async login(body: LoginDto) {
+  async login(body: LoginDto, response: Response) {
     const { email, password } = body;
-    const userRecord = await this.userRepository.findOneBy({ email });
-    if (!userRecord) {
+
+    const findUser = await this.userRepository.findOneBy({ email });
+    if (!findUser) {
       throw new HttpException(
         'Incorrect Email address or password',
         HttpStatus.UNAUTHORIZED,
       );
     }
 
-    const isPasswordValid = await argon2.verify(userRecord.password, password);
+    const isPasswordValid = await argon2.verify(findUser.password, password);
     if (!isPasswordValid) {
       throw new HttpException(
         'Incorrect Email address or password',
         HttpStatus.UNAUTHORIZED,
       );
     }
-    const payload = await this.getPayload(userRecord);
-    const { accessToken, refreshToken } = await this.signToken(payload);
+
+    const { id, username, loginType, role, createdAt, updatedAt, deletedAt } =
+      findUser;
+    const payload = {
+      id,
+      username,
+      loginType,
+      role,
+      createdAt,
+      updatedAt,
+      deletedAt,
+    };
+
+    const newAccessToken = await this.createAccessToken(payload);
+    const newRefreshToken = await this.createRefreshToken(payload);
+    await this.userRepository.update(
+      {
+        email,
+      },
+      {
+        refreshToken: newRefreshToken,
+      },
+    );
+
+    response.cookie('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      maxAge: ms(this.configService.get('jwt').refreshTokenExpires),
+    });
 
     return {
       message: 'Login successfully',
       result: {
-        accessToken,
-        refreshToken,
+        accessToken: newAccessToken,
+        user: payload,
       },
     };
   }
@@ -107,6 +130,7 @@ export class AuthService {
     });
 
     delete userInfo.password;
+    delete userInfo.refreshToken;
 
     return {
       message: 'get user info successfully',
@@ -114,63 +138,87 @@ export class AuthService {
     };
   }
 
-  async refresh(body: RefreshTokenDto) {
-    const { refreshToken } = body;
-    const payloadRefresh = await this.jwtService.verifyAsync(refreshToken, {
-      secret: this.configService.get('jwtAuth').jwtRefreshTokenSecret,
-    });
-    const userRecord = await this.userRepository.findOneBy({
-      id: payloadRefresh.id,
-    });
+  async refresh(request: Request, response: Response) {
+    const refreshTokenCookie = request.cookies['refresh_token'];
 
-    if (!userRecord) {
+    if (!refreshTokenCookie) {
+      throw new BadRequestException('token invalid');
+    }
+
+    if (!refreshTokenCookie) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
 
-    const payload = await this.getPayload(userRecord);
-    const { accessToken, refreshToken: newRefreshToken } =
-      await this.signToken(payload);
-    return {
-      message: 'Refresh Token successfully',
-      result: {
-        accessToken,
-        refreshToken: newRefreshToken,
+    const findUser = await this.userRepository.findOne({
+      where: {
+        refreshToken: refreshTokenCookie,
       },
-    };
-  }
-
-  async getPayload(user: User) {
-    return {
-      id: user.id,
-      username: user.username,
-      loginType: user.loginType,
-      role: user.role,
-    };
-  }
-
-  async signToken(payloadAccess) {
-    const payloadRefresh = {
-      id: payloadAccess.id,
-    };
-
-    const accessToken = await this.jwtService.signAsync(payloadAccess, {
-      secret: this.configService.get('jwtAuth').jwtAccessTokenSecret,
-      expiresIn: '15m',
     });
 
-    const refreshToken = await this.jwtService.signAsync(payloadRefresh, {
-      secret: this.configService.get('jwtAuth').jwtRefreshTokenSecret,
-      expiresIn: '7d',
-    });
+    if (!findUser) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
 
-    return {
-      accessToken,
-      refreshToken,
-    };
+    try {
+      const { id, username, loginType, role, createdAt, updatedAt, deletedAt } =
+        findUser;
+      const payload = {
+        id,
+        username,
+        loginType,
+        role,
+        createdAt,
+        updatedAt,
+        deletedAt,
+      };
+
+      const newAccessToken = await this.createAccessToken(payload);
+      const newRefreshToken = await this.createRefreshToken(payload);
+      await this.userRepository.update(
+        {
+          id,
+        },
+        {
+          refreshToken: newRefreshToken,
+        },
+      );
+
+      response.cookie('refresh_token', newRefreshToken, {
+        httpOnly: true,
+        maxAge: ms(this.configService.get('jwt').refreshTokenExpires),
+      });
+
+      return {
+        message: 'Refresh Token successfully',
+        result: {
+          accessToken: newAccessToken,
+          user: payload,
+        },
+      };
+    } catch (error) {
+      throw new BadRequestException('Refresh Token failed');
+    }
   }
 
-  async loginGoogle(body: LoginGoogleDto) {
+  async createAccessToken(payload: any): Promise<any> {
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.get('jwt').accessTokenSecret,
+      expiresIn: this.configService.get('jwt').accessTokenExpires,
+    });
+    return accessToken;
+  }
+
+  async createRefreshToken(payload: any): Promise<any> {
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.get('jwt').refreshTokenSecret,
+      expiresIn: this.configService.get('jwt').refreshTokenExpires,
+    });
+    return refreshToken;
+  }
+
+  async loginGoogle(body: LoginGoogleDto, response: Response) {
     const { token } = body;
+
     const ggClientId = this.configService.get('google').clientId;
     const ggClientSecret = this.configService.get('google').clientSecret;
     const oAuthClient = new OAuth2Client(ggClientId, ggClientSecret);
@@ -187,38 +235,62 @@ export class AuthService {
       );
     }
 
-    let userRecord = await this.userRepository.findOneBy({
+    let findUser = await this.userRepository.findOneBy({
       email,
       loginType: LOGIN_TYPE.GOOGLE,
     });
 
-    if (userRecord && userRecord.loginType === LOGIN_TYPE.EMAIL) {
+    if (findUser && findUser.loginType === LOGIN_TYPE.EMAIL) {
       throw new HttpException(
         'Email use to login:' + email,
         HttpStatus.FORBIDDEN,
       );
     }
 
-    if (!userRecord) {
-      userRecord = await this.userRepository.save({
+    if (!findUser) {
+      findUser = await this.userRepository.save({
         email,
         username: name,
         loginType: LOGIN_TYPE.GOOGLE,
+        role: ROLE.APPLICANT,
       });
-
       await this.applicantRepository.save({
-        userId: userRecord.id,
+        userId: findUser.id,
       });
     }
 
-    const payload = await this.getPayload(userRecord);
-    const { accessToken, refreshToken: newRefreshToken } =
-      await this.signToken(payload);
+    const { id, username, loginType, role, createdAt, updatedAt, deletedAt } =
+      findUser;
+    const payload = {
+      id,
+      username,
+      loginType,
+      role,
+      createdAt,
+      updatedAt,
+      deletedAt,
+    };
+
+    const newAccessToken = await this.createAccessToken(payload);
+    const newRefreshToken = await this.createRefreshToken(payload);
+    await this.userRepository.update(
+      {
+        email,
+      },
+      {
+        refreshToken: newRefreshToken,
+      },
+    );
+
+    response.cookie('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      maxAge: ms(this.configService.get('jwt').refreshTokenExpires),
+    });
     return {
       message: 'Login with google successfully',
       result: {
-        accessToken,
-        refreshToken: newRefreshToken,
+        accessToken: newAccessToken,
+        user: payload,
       },
     };
   }
@@ -274,5 +346,53 @@ export class AuthService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async logout(user: User, response: Response) {
+    await this.userRepository.update(
+      { id: user.id },
+      {
+        refreshToken: null,
+      },
+    );
+    response.clearCookie('refresh_token');
+    return {
+      message: 'logout successfully',
+    };
+  }
+
+  async forgotPassword(body: ForgotPasswordDto) {
+    const { email } = body;
+    const findEmail = await this.userRepository.findOneBy({ email });
+    if (!findEmail) {
+      throw new HttpException('Email not found', HttpStatus.NOT_FOUND);
+    }
+    await this.mailQueue.add('forgot-password', {
+      email,
+    });
+    return {
+      message: 'send mail to reset password successfully',
+    };
+  }
+
+  async resetPassword(body: ResetPasswordDto) {
+    const { email, password } = body;
+    const findEmail = await this.userRepository.findOneBy({ email });
+    if (!findEmail) {
+      throw new HttpException('Email not found', HttpStatus.NOT_FOUND);
+    }
+    const hashPassword = await argon2.hash(password);
+
+    await this.userRepository.update(
+      {
+        email,
+      },
+      {
+        password: hashPassword,
+      },
+    );
+    return {
+      message: 'reset password successfully',
+    };
   }
 }

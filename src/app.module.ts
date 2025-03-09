@@ -29,7 +29,7 @@ import { ApplicantModule } from './modules/applicant/applicant.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get('jwtAuth').JWT_TOKEN_SECRET,
+        secret: configService.get('jwt').JWT_ACCESS_TOKEN_SECRET,
       }),
     }),
     MailModule,

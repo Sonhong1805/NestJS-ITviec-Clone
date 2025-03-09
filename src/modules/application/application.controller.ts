@@ -14,7 +14,7 @@ import { ROLE } from 'src/commons/enums/user.enum';
 import { Public } from 'src/commons/decorators/public.decorator';
 import { ApplicationService } from './application.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
-import { GetCurrentUser } from 'src/commons/decorators/get-current-user.decorator';
+import { GetUser } from 'src/commons/decorators/get-current-user.decorator';
 import { User } from 'src/databases/entities/user.entity';
 @ApiBearerAuth()
 @Controller('application')
@@ -23,7 +23,7 @@ export class ApplicationController {
 
   @Roles(ROLE.APPLICANT)
   @Post()
-  create(@Body() body: CreateApplicationDto, @GetCurrentUser() user: User) {
+  create(@Body() body: CreateApplicationDto, @GetUser() user: User) {
     return this.applicationService.create(body, user);
   }
 
@@ -31,7 +31,7 @@ export class ApplicationController {
   @Get('manuscript/:manuscriptId')
   getAllByManuscript(
     @Param('manuscriptId') manuscriptId: number,
-    @GetCurrentUser() user: User,
+    @GetUser() user: User,
   ) {
     return this.applicationService.getAllByManuscript(manuscriptId, user);
   }

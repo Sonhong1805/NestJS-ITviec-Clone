@@ -34,6 +34,9 @@ export class User {
   @Column('character varying', { name: 'role', nullable: true })
   role: string | null;
 
+  @Column('text', { name: 'refresh_token', nullable: true })
+  refreshToken: string | null;
+
   @Column('timestamp without time zone', {
     name: 'created_at',
     nullable: true,

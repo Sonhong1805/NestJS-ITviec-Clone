@@ -9,7 +9,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 export interface Response<T> {
-  statusCode: number;
+  isSuccess: boolean;
   message: string;
   data: T;
 }
@@ -28,8 +28,13 @@ export class TransformResponseInterceptor<T>
           return data;
         }
 
+        const statusCode = <number>(
+          context.switchToHttp().getResponse().statusCode
+        );
+        const isSuccess = statusCode >= 200 && statusCode < 300;
+
         return {
-          statusCode: <number>context.switchToHttp().getResponse().statusCode,
+          isSuccess,
           message: <string>data.message,
           data: data.result,
         };
