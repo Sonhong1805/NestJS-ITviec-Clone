@@ -25,6 +25,7 @@ export class MailProcessor extends WorkerHost {
         {
           name: job.data.name,
           email: job.data.email,
+          password: job.data.password,
           company: job.data.company,
         },
       );
@@ -36,6 +37,7 @@ export class MailProcessor extends WorkerHost {
         'forgot-password',
         {
           email: job.data.email,
+          path: job.data.path,
         },
       );
     }

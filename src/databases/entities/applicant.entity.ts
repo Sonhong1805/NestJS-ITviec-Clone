@@ -45,9 +45,6 @@ export class Applicant extends BaseEntity {
   @Column('character varying', { name: 'website', nullable: true })
   website: string | null;
 
-  @Column('character varying', { name: 'phone_number', nullable: true })
-  phoneNumber: string | null;
-
   @Column('character varying', { name: 'summary', nullable: true })
   summary: string | null;
 

@@ -1,7 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { COMPANY_ADDRESS } from 'src/commons/enums/company.enum';
-import { IsStrongPassword } from 'src/commons/decorators/is-strong-password.decorator';
 
 export class RegisterCompanyDto {
   @ApiProperty({ example: 'user' })
@@ -15,11 +20,15 @@ export class RegisterCompanyDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: 'User123456789' })
+  @ApiProperty({ example: 'developer' })
   @IsString()
   @IsNotEmpty()
-  @IsStrongPassword()
-  password: string;
+  position: string;
+
+  @ApiProperty({ example: '01235456876' })
+  @IsString()
+  @IsNotEmpty()
+  phoneNumber: string;
 
   @ApiProperty({ example: 'Panasonic' })
   @IsString()
@@ -34,6 +43,6 @@ export class RegisterCompanyDto {
 
   @ApiProperty({ example: 'http//...' })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   companyWebsite: string;
 }

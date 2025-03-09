@@ -10,6 +10,7 @@ export const REQUIRED_ENVS = [
 
 export default () => ({
   port: parseInt(process.env.PORT, 10) || 3000,
+  clientUrl: process.env.CLIENT_URL,
   jwt: {
     accessTokenSecret: process.env.JWT_ACCESS_TOKEN_SECRET,
     accessTokenExpires: process.env.JWT_ACCESS_TOKEN_EXPIRES,

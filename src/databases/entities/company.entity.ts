@@ -40,6 +40,9 @@ export class Company extends BaseEntity {
   @Column('character varying', { name: 'code_tax', nullable: true })
   codeTax: string | null;
 
+  @Column('character varying', { name: 'position', nullable: true })
+  position: string | null;
+
   @Column('character varying', { name: 'location', nullable: true })
   location: string | null;
 

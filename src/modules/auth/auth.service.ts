@@ -24,6 +24,7 @@ import { Request, Response } from 'express';
 import * as ms from 'ms';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { randomPassword } from 'src/commons/utils/random';
 
 @Injectable()
 export class AuthService {
@@ -85,11 +86,20 @@ export class AuthService {
       );
     }
 
-    const { id, username, loginType, role, createdAt, updatedAt, deletedAt } =
-      findUser;
+    const {
+      id,
+      username,
+      phoneNumber,
+      loginType,
+      role,
+      createdAt,
+      updatedAt,
+      deletedAt,
+    } = findUser;
     const payload = {
       id,
       username,
+      phoneNumber,
       loginType,
       role,
       createdAt,
@@ -259,11 +269,20 @@ export class AuthService {
       });
     }
 
-    const { id, username, loginType, role, createdAt, updatedAt, deletedAt } =
-      findUser;
+    const {
+      id,
+      username,
+      phoneNumber,
+      loginType,
+      role,
+      createdAt,
+      updatedAt,
+      deletedAt,
+    } = findUser;
     const payload = {
       id,
       username,
+      phoneNumber,
       loginType,
       role,
       createdAt,
@@ -299,11 +318,14 @@ export class AuthService {
     const {
       username,
       email,
-      password,
+      position,
+      phoneNumber,
       companyName,
       companyAddress,
       companyWebsite,
     } = body;
+
+    const password = randomPassword();
 
     const userRecord = await this.userRepository.findOneBy({ email });
     if (userRecord) {
@@ -319,6 +341,7 @@ export class AuthService {
       const newUser = await queryRunner.manager.save(User, {
         username,
         email,
+        phoneNumber,
         password: hashPassword,
         loginType: LOGIN_TYPE.EMAIL,
         role: ROLE.COMPANY,
@@ -326,6 +349,7 @@ export class AuthService {
 
       await queryRunner.manager.save(Company, {
         userId: newUser.id,
+        position,
         name: companyName,
         location: companyAddress,
         website: companyWebsite,
@@ -335,6 +359,7 @@ export class AuthService {
       await this.mailQueue.add('send-mail-company', {
         name: username,
         email,
+        password,
         company: companyName,
       });
 
@@ -362,13 +387,27 @@ export class AuthService {
   }
 
   async forgotPassword(body: ForgotPasswordDto) {
-    const { email } = body;
+    const { email, isCompany } = body;
     const findEmail = await this.userRepository.findOneBy({ email });
     if (!findEmail) {
       throw new HttpException('Email not found', HttpStatus.NOT_FOUND);
     }
+
+    if (isCompany) {
+      const findEmailCompany = await this.userRepository.findOneBy({
+        email,
+        role: ROLE.COMPANY,
+      });
+      if (!findEmailCompany) {
+        throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
+      }
+    }
+
+    const clientUrl = this.configService.get('clientUrl');
+
     await this.mailQueue.add('forgot-password', {
       email,
+      path: isCompany ? clientUrl + '/employer' : clientUrl,
     });
     return {
       message: 'send mail to reset password successfully',
