@@ -8,70 +8,70 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ManuscriptService } from './manuscript.service';
+import { JobService } from './job.service';
 import { Public } from 'src/commons/decorators/public.decorator';
 import { Roles } from 'src/commons/decorators/roles.decorator';
 import { ROLE } from 'src/commons/enums/user.enum';
 import { GetUser } from 'src/commons/decorators/get-current-user.decorator';
 import { User } from 'src/databases/entities/user.entity';
-import { UpsertManuscriptDto } from './dto/upsert-manuscript.dto';
+import { UpsertJobDto } from './dto/upsert-job.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { ManuscriptQueriesDto } from './dto/manuscript-queries.dto';
+import { JobQueriesDto } from './dto/job-queries.dto';
 import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
 
 @ApiBearerAuth()
-@Controller('manuscript')
-export class ManuscriptController {
-  constructor(private readonly manuscriptService: ManuscriptService) {}
+@Controller('job')
+export class JobController {
+  constructor(private readonly jobService: JobService) {}
 
   @Roles(ROLE.COMPANY)
   @Post()
-  create(@Body() body: UpsertManuscriptDto, @GetUser() user: User) {
-    return this.manuscriptService.create(body, user);
+  create(@Body() body: UpsertJobDto, @GetUser() user: User) {
+    return this.jobService.create(body, user);
   }
 
   @Put(':id')
   update(
     @Param('id') id: number,
-    @Body() body: UpsertManuscriptDto,
+    @Body() body: UpsertJobDto,
     @GetUser() user: User,
   ) {
-    return this.manuscriptService.update(id, body, user);
+    return this.jobService.update(id, body, user);
   }
 
   @Public()
   @Get(':id')
   getDetail(@Param('id') id: number, @GetUser() user: User) {
-    return this.manuscriptService.getDetail(id, user);
+    return this.jobService.getDetail(id, user);
   }
 
   @Roles(ROLE.COMPANY)
   @Delete(':id')
   delete(@Param('id') id: number, @GetUser() user: User) {
-    return this.manuscriptService.delete(id, user);
+    return this.jobService.delete(id, user);
   }
 
   @Public()
   @Get('')
-  getAll(@Query('') queries: ManuscriptQueriesDto) {
-    return this.manuscriptService.getAll(queries);
+  getAll(@Query('') queries: JobQueriesDto) {
+    return this.jobService.getAll(queries);
   }
 
   @Roles(ROLE.APPLICANT)
   @Get('viewed')
   getAllByViewed(@Query('') queries: CommonQueryDto, @GetUser() user: User) {
-    return this.manuscriptService.getAllByViewed(queries, user);
+    return this.jobService.getAllByViewed(queries, user);
   }
 
   @Roles(ROLE.APPLICANT)
   @Get('favorite')
   getAllByFavorite(@Query() queries: CommonQueryDto, @GetUser() user: User) {
-    return this.manuscriptService.getAllByFavorite(queries, user);
+    return this.jobService.getAllByFavorite(queries, user);
   }
 
   @Roles(ROLE.APPLICANT)
   @Post('favorite/:id')
   favorite(@Param('id') id: number, @GetUser() user: User) {
-    return this.manuscriptService.favorite(id, user);
+    return this.jobService.favorite(id, user);
   }
 }

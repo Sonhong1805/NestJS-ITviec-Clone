@@ -8,23 +8,23 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Application } from './application.entity';
-import { ManuscriptSave } from './manuscript-save.entity';
-import { ManuscriptSkill } from './manuscript-skill.entity';
-import { ManuscriptView } from './manuscript-view.entity';
+import { JobSave } from './job-save.entity';
 import { Company } from './company.entity';
 import { BaseEntity } from './base.entity';
+import { JobSkill } from './job-skill.entity';
+import { JobView } from './job-view.entity';
 
-@Index('manuscripts_pkey', ['id'], { unique: true })
-@Entity('manuscripts', { schema: 'public' })
-export class Manuscript extends BaseEntity {
+@Index('jobs_pkey', ['id'], { unique: true })
+@Entity('jobs', { schema: 'public' })
+export class Job extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
 
   @Column('character varying', { name: 'title', nullable: true })
   title: string | null;
 
-  @Column('character varying', { name: 'summary', nullable: true })
-  summary: string | null;
+  @Column('character varying', { name: 'slug', nullable: true })
+  slug: string | null;
 
   @Column('character varying', { name: 'descriptions', nullable: true })
   descriptions: string | null;
@@ -68,28 +68,19 @@ export class Manuscript extends BaseEntity {
   @Column('integer', { name: 'company_id', nullable: true, unique: true })
   companyId: number | null;
 
-  @OneToMany(() => Application, (applications) => applications.manuscript)
+  @OneToMany(() => Application, (applications) => applications.job)
   applications: Application[];
 
-  @OneToMany(
-    () => ManuscriptSave,
-    (manuscriptSaves) => manuscriptSaves.manuscript,
-  )
-  manuscriptSaves: ManuscriptSave[];
+  @OneToMany(() => JobSave, (jobSaves) => jobSaves.job)
+  jobSaves: JobSave[];
 
-  @OneToMany(
-    () => ManuscriptSkill,
-    (manuscriptSkills) => manuscriptSkills.manuscript,
-  )
-  manuscriptSkills: ManuscriptSkill[];
+  @OneToMany(() => JobSkill, (jobSkills) => jobSkills.job)
+  jobSkills: JobSkill[];
 
-  @OneToMany(
-    () => ManuscriptView,
-    (manuscriptViews) => manuscriptViews.manuscript,
-  )
-  manuscriptViews: ManuscriptView[];
+  @OneToMany(() => JobView, (jobViews) => jobViews.job)
+  jobViews: JobView[];
 
-  @ManyToOne(() => Company, (companies) => companies.manuscripts)
+  @ManyToOne(() => Company, (companies) => companies.jobs)
   @JoinColumn([{ name: 'company_id', referencedColumnName: 'id' }])
   company: Company;
 }

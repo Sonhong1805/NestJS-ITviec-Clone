@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { User } from 'src/databases/entities/user.entity';
-import { ManuscriptRepository } from 'src/databases/repositories/manuscript.repository';
+import { JobRepository } from 'src/databases/repositories/job.repository';
 import { ApplicationRepository } from 'src/databases/repositories/application.repository';
 import { StorageService } from '../storage/storage.service';
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
@@ -10,20 +10,20 @@ import { ApplicantRepository } from 'src/databases/repositories/applicant.reposi
 export class ApplicationService {
   constructor(
     private readonly applicationRepository: ApplicationRepository,
-    private readonly manuscriptRepository: ManuscriptRepository,
+    private readonly jobRepository: JobRepository,
     private readonly applicantRepository: ApplicantRepository,
     private readonly storageService: StorageService,
   ) {}
 
   async create(body: CreateApplicationDto, user: User) {
-    const findManuscript = await this.manuscriptRepository.findOne({
+    const findJob = await this.jobRepository.findOne({
       where: {
-        id: body.manuscriptId,
+        id: body.jobId,
       },
     });
 
-    if (!findManuscript) {
-      throw new HttpException('manuscript not found', HttpStatus.NOT_FOUND);
+    if (!findJob) {
+      throw new HttpException('Job not found', HttpStatus.NOT_FOUND);
     }
 
     const findAppicant = await this.applicantRepository.findOne({
@@ -47,31 +47,31 @@ export class ApplicationService {
     };
   }
 
-  async getAllByManuscript(manuscriptId: number, user: User) {
-    const findManuscript = await this.manuscriptRepository.findOne({
+  async getAllByJob(jobId: number, user: User) {
+    const findJob = await this.jobRepository.findOne({
       where: {
-        id: manuscriptId,
+        id: jobId,
       },
       relations: ['company'],
     });
 
-    if (!findManuscript) {
-      throw new HttpException('manuscript not found', HttpStatus.NOT_FOUND);
+    if (!findJob) {
+      throw new HttpException('Job not found', HttpStatus.NOT_FOUND);
     }
 
-    if (findManuscript.company.userId !== user.id) {
+    if (findJob.company.userId !== user.id) {
       throw new HttpException('company not access', HttpStatus.FORBIDDEN);
     }
 
     const result = await this.applicationRepository.find({
       where: {
-        manuscriptId,
+        jobId,
       },
       relations: ['applicant'],
     });
 
     return {
-      message: 'Get all application by manuscript',
+      message: 'Get all application by Job',
       result,
     };
   }

@@ -7,8 +7,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Applicant } from './applicant.entity';
-import { Manuscript } from './manuscript.entity';
 import { BaseEntity } from './base.entity';
+import { Job } from './job.entity';
 
 @Index('applications_pkey', ['id'], { unique: true })
 @Entity('applications', { schema: 'public' })
@@ -37,14 +37,14 @@ export class Application extends BaseEntity {
   @Column({ type: 'integer', name: 'applicant_id' })
   applicantId: number;
 
-  @Column({ type: 'integer', name: 'manuscript_id' })
-  manuscriptId: number;
+  @Column({ type: 'integer', name: 'job_id' })
+  jobId: number;
 
   @ManyToOne(() => Applicant, (applicants) => applicants.applications)
   @JoinColumn([{ name: 'applicant_id', referencedColumnName: 'id' }])
   applicant: Applicant;
 
-  @ManyToOne(() => Manuscript, (manuscripts) => manuscripts.applications)
-  @JoinColumn([{ name: 'manuscript_id', referencedColumnName: 'id' }])
-  manuscript: Manuscript;
+  @ManyToOne(() => Job, (jobs) => jobs.applications)
+  @JoinColumn([{ name: 'job_id', referencedColumnName: 'id' }])
+  job: Job;
 }

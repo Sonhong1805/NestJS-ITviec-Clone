@@ -30,5 +30,5 @@ export class CreateApplicationDto {
   @ApiProperty({ required: false })
   @IsNumber()
   @IsNotEmpty()
-  manuscriptId: number;
+  jobId: number;
 }

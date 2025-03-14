@@ -11,14 +11,14 @@ export const convertStringSortToObject = (sort: string) => {
   }
 };
 
-export const convertKeySortManuscript = (sortObj: any) => {
+export const convertKeySortJob = (sortObj: any) => {
   const sortConverted = {};
   for (const key of Object.keys(sortObj)) {
     if (key === 'salary') {
-      sortConverted['manuscript.maxSalary'] = sortObj[key];
+      sortConverted['job.maxSalary'] = sortObj[key];
     }
     if (key === 'title') {
-      sortConverted['manuscript.title'] = sortObj[key];
+      sortConverted['job.title'] = sortObj[key];
     }
   }
   return sortConverted;

@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ApplicantSkill } from './applicant-skill.entity';
-import { ManuscriptSkill } from './manuscript-skill.entity';
+import { JobSkill } from './job-skill.entity';
 
 @Index('skills_pkey', ['id'], { unique: true })
 @Entity('skills', { schema: 'public' })
@@ -37,9 +37,6 @@ export class Skill {
   @OneToMany(() => ApplicantSkill, (applicantSkills) => applicantSkills.skill)
   applicantSkills: ApplicantSkill[];
 
-  @OneToMany(
-    () => ManuscriptSkill,
-    (manuscriptSkills) => manuscriptSkills.skill,
-  )
-  manuscriptSkills: ManuscriptSkill[];
+  @OneToMany(() => JobSkill, (jobSkills) => jobSkills.skill)
+  jobSkills: JobSkill[];
 }

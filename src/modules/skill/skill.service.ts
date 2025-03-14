@@ -3,10 +3,15 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { UpsertSkillDto } from './dto/upsert-skill.dto';
 import { SkillQueriesDto } from './dto/skill-query.dto';
 import { ILike } from 'typeorm';
+import { ResdisService } from '../redis/redis.service';
+import { Skill } from 'src/databases/entities/skill.entity';
 
 @Injectable()
 export class SkillService {
-  constructor(private readonly skillRepository: SkillRepository) {}
+  constructor(
+    private readonly skillRepository: SkillRepository,
+    private readonly resdisService: ResdisService,
+  ) {}
 
   async create(body: UpsertSkillDto) {
     const newSkill = await this.skillRepository.save(body);
@@ -35,7 +40,6 @@ export class SkillService {
 
   async getDetail(id: number) {
     const findSkill = await this.skillRepository.findOneBy({ id });
-
     return {
       message: 'get detail skill successfully',
       result: findSkill,
@@ -52,14 +56,22 @@ export class SkillService {
 
   async getAll(queries: SkillQueriesDto) {
     const { name } = queries;
-    const whereClause = name
-      ? {
-          name: ILike(`%${name}%`),
-        }
-      : {};
-    const allSkill = await this.skillRepository.find({
-      where: whereClause,
-    });
+    const skills = await this.resdisService.getKey('skills');
+    let allSkill: Skill[];
+    if (allSkill) {
+      allSkill = JSON.parse(skills);
+    } else {
+      const whereClause = name
+        ? {
+            name: ILike(`%${name}%`),
+          }
+        : {};
+      allSkill = await this.skillRepository.find({
+        where: whereClause,
+      });
+      await this.resdisService.setKey('skills', JSON.stringify(allSkill));
+    }
+
     return {
       message: 'Get all skill successfully',
       result: allSkill,

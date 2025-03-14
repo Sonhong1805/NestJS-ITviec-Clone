@@ -25,6 +25,7 @@ import * as ms from 'ms';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { randomPassword } from 'src/commons/utils/random';
+import { convertToSlug } from 'src/commons/utils/convertToSlug';
 
 @Injectable()
 export class AuthService {
@@ -346,11 +347,13 @@ export class AuthService {
         loginType: LOGIN_TYPE.EMAIL,
         role: ROLE.COMPANY,
       });
+      const slug = convertToSlug(companyName);
 
       await queryRunner.manager.save(Company, {
         userId: newUser.id,
         position,
         name: companyName,
+        slug,
         location: companyAddress,
         website: companyWebsite,
       });

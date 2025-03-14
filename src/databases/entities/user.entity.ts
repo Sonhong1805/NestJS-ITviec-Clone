@@ -10,8 +10,8 @@ import { Applicant } from './applicant.entity';
 import { Company } from './company.entity';
 import { CompanyFollow } from './company-follow.entity';
 import { CompanyReview } from './company-review.entity';
-import { ManuscriptSave } from './manuscript-save.entity';
-import { ManuscriptView } from './manuscript-view.entity';
+import { JobSave } from './job-save.entity';
+import { JobView } from './job-view.entity';
 
 @Index('users_pkey', ['id'], { unique: true })
 @Entity('users', { schema: 'public' })
@@ -44,9 +44,6 @@ export class User {
   @Column('text', { name: 'refresh_token', nullable: true })
   refreshToken: string | null;
 
-  // @Column('boolean', { name: 'is_remember', nullable: true })
-  // isRemember: boolean | null;
-
   @Column('timestamp without time zone', {
     name: 'created_at',
     nullable: true,
@@ -76,9 +73,9 @@ export class User {
   @OneToMany(() => CompanyReview, (companyReviews) => companyReviews.user)
   companyReviews: CompanyReview[];
 
-  @OneToMany(() => ManuscriptSave, (manuscriptSaves) => manuscriptSaves.user)
-  manuscriptSaves: ManuscriptSave[];
+  @OneToMany(() => JobSave, (jobSaves) => jobSaves.user)
+  jobSaves: JobSave[];
 
-  @OneToMany(() => ManuscriptView, (manuscriptViews) => manuscriptViews.user)
-  manuscriptViews: ManuscriptView[];
+  @OneToMany(() => JobView, (jobViews) => jobViews.user)
+  jobViews: JobView[];
 }

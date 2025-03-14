@@ -12,8 +12,9 @@ import { Industry } from './industry.entity';
 import { User } from './user.entity';
 import { CompanyFollow } from './company-follow.entity';
 import { CompanyReview } from './company-review.entity';
-import { Manuscript } from './manuscript.entity';
 import { BaseEntity } from './base.entity';
+import { Job } from './job.entity';
+import { CompanySkill } from './company-skill.entity';
 
 @Index('companies_pkey', ['id'], { unique: true })
 @Index('companies_user_id_key', ['userId'], { unique: true })
@@ -28,23 +29,29 @@ export class Company extends BaseEntity {
   @Column('character varying', { name: 'name', nullable: true })
   name: string | null;
 
+  @Column('character varying', { name: 'slug', nullable: true })
+  slug: string | null;
+
   @Column('character varying', { name: 'website', nullable: true })
   website: string | null;
 
-  @Column('character varying', { name: 'descriptions', nullable: true })
-  descriptions: string | null;
+  @Column('text', { name: 'overview', nullable: true })
+  overview: string | null;
+
+  @Column('text', { name: 'perks', nullable: true })
+  perks: string | null;
 
   @Column('character varying', { name: 'logo', nullable: true })
   logo: string | null;
-
-  @Column('character varying', { name: 'code_tax', nullable: true })
-  codeTax: string | null;
 
   @Column('character varying', { name: 'position', nullable: true })
   position: string | null;
 
   @Column('character varying', { name: 'location', nullable: true })
   location: string | null;
+
+  @Column('character varying', { name: 'country', nullable: true })
+  country: string | null;
 
   @Column('character varying', { name: 'company_size', nullable: true })
   companySize: string | null;
@@ -54,6 +61,12 @@ export class Company extends BaseEntity {
 
   @Column('character varying', { name: 'working_day', nullable: true })
   workingDay: string | null;
+
+  @Column('character varying', { name: 'overtime_policy', nullable: true })
+  overtimePolicy: string | null;
+
+  @Column('integer', { name: 'industry_id', nullable: true, unique: true })
+  industryId: number | null;
 
   @Column('boolean', { name: 'is_active', nullable: true })
   isActive: boolean | null;
@@ -72,9 +85,9 @@ export class Company extends BaseEntity {
   @OneToMany(() => CompanyReview, (companyReviews) => companyReviews.company)
   companyReviews: CompanyReview[];
 
-  @OneToMany(() => Manuscript, (manuscripts) => manuscripts.company)
-  manuscripts: Manuscript[];
+  @OneToMany(() => Job, (jobs) => jobs.company)
+  jobs: Job[];
 
-  @Column('integer', { name: 'industry_id', nullable: true, unique: true })
-  industryId: number | null;
+  @OneToMany(() => CompanySkill, (companySkills) => companySkills.company)
+  companySkills: CompanySkill[];
 }

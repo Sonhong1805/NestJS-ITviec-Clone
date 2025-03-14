@@ -28,11 +28,8 @@ export class ApplicationController {
   }
 
   @Roles(ROLE.COMPANY)
-  @Get('manuscript/:manuscriptId')
-  getAllByManuscript(
-    @Param('manuscriptId') manuscriptId: number,
-    @GetUser() user: User,
-  ) {
-    return this.applicationService.getAllByManuscript(manuscriptId, user);
+  @Get('job/:jobId')
+  getAllByjob(@Param('jobId') jobId: number, @GetUser() user: User) {
+    return this.applicationService.getAllByJob(jobId, user);
   }
 }

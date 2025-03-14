@@ -9,12 +9,9 @@ import {
 } from 'class-validator';
 import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
 import { COMPANY_ADDRESS, COMPANY_TYPE } from 'src/commons/enums/company.enum';
-import {
-  APPLICANT_LEVEL,
-  WORKING_MODEL,
-} from 'src/commons/enums/manuscript.enum';
+import { APPLICANT_LEVEL, WORKING_MODEL } from 'src/commons/enums/job.enum';
 
-export class ManuscriptQueriesDto extends CommonQueryDto {
+export class JobQueriesDto extends CommonQueryDto {
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()

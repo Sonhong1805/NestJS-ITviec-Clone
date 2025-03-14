@@ -3,26 +3,24 @@ import { Transform } from 'class-transformer';
 import {
   IsDate,
   IsEnum,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
 import { COMPANY_ADDRESS } from 'src/commons/enums/company.enum';
-import {
-  APPLICANT_LEVEL,
-  WORKING_MODEL,
-} from 'src/commons/enums/manuscript.enum';
+import { APPLICANT_LEVEL, WORKING_MODEL } from 'src/commons/enums/job.enum';
 
-export class UpsertManuscriptDto {
+export class UpsertJobDto {
   @ApiProperty()
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   title: string;
 
   @ApiProperty()
   @IsString()
   @IsOptional()
-  summary: string;
+  slug: string;
 
   @ApiProperty({
     example: WORKING_MODEL.AT_OFFICE,

@@ -15,11 +15,11 @@ import { StorageModule } from './modules/storage/storage.module';
 import { SkillModule } from './modules/skill/skill.module';
 import { IndustryModule } from './modules/industry/industry.module';
 import { CompanyModule } from './modules/company/company.module';
-import { ManuscriptModule } from './modules/manuscript/manuscript.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ApplicationModule } from './modules/application/application.module';
 import { ApplicantModule } from './modules/applicant/applicant.module';
+import { JobModule } from './modules/job/job.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ load: [configuration], isGlobal: true }),
@@ -38,7 +38,7 @@ import { ApplicantModule } from './modules/applicant/applicant.module';
     SkillModule,
     IndustryModule,
     CompanyModule,
-    ManuscriptModule,
+    JobModule,
     RedisModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],

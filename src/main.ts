@@ -11,7 +11,6 @@ import { AllExceptionsFilter } from './commons/filters/all-exceptions.filter';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { validateEnvironments } from './configs/configuration';
 import * as cookieParser from 'cookie-parser';
-import { join } from 'path';
 
 async function bootstrap() {
   validateEnvironments();
