@@ -18,6 +18,7 @@ import { Company } from 'src/databases/entities/company.entity';
 import { UserRepository } from 'src/databases/repositories/user.repository';
 import { CompanySkill } from 'src/databases/entities/company-skill.entity';
 import { CompanySkillRepository } from 'src/databases/repositories/company-skill.repository';
+import { Skill } from 'src/databases/entities/skill.entity';
 
 @Injectable()
 export class CompanyService {
@@ -189,11 +190,12 @@ export class CompanyService {
   }
 
   async getDetail(param: string | number) {
-    const queryBuilder = this.companyRepository
+    const queryBuilder = await this.companyRepository
       .createQueryBuilder('company')
       .leftJoin('company.companySkills', 'companySkill')
       .leftJoin('companySkill.skill', 'skill')
       .leftJoin('company.industry', 'industry')
+      // .leftJoin('company.jobs', 'job')
       .select([
         'company.id as "id"',
         'company.name as "companyName"',
@@ -212,7 +214,8 @@ export class CompanyService {
         'company.isActive as "isActive"',
         `json_build_object(
           'id', industry.id,
-          'name', industry.name
+          'name_en', industry.name_en,
+          'name_vi', industry.name_vi
         ) AS industry`,
         "JSON_AGG(json_build_object('id',skill.id,'name', skill.name)) AS skills",
       ])
@@ -289,6 +292,46 @@ export class CompanyService {
           total,
         },
       },
+    };
+  }
+
+  async getAll() {
+    const queryBuilder = await this.companyRepository
+      .createQueryBuilder('company')
+      .leftJoin('company.companySkills', 'companySkill')
+      .leftJoin('companySkill.skill', 'skill')
+      .leftJoin('company.jobs', 'job')
+      .select([
+        'company.id as "id"',
+        'company.name as "companyName"',
+        'company.slug as "slug"',
+        'company.logo as "logo"',
+        'company.location as "location"',
+        "jsonb_agg(DISTINCT jsonb_build_object('id',skill.id,'name', skill.name)) AS skills",
+        "jsonb_agg(DISTINCT jsonb_build_object('id',job.id,'title', job.title)) AS jobs",
+      ])
+      .groupBy('company.id');
+    const data = await queryBuilder.getRawMany();
+    const newData = await Promise.all(
+      data.map(async (item) => {
+        const logo = item.logo;
+        let signedLogo = logo ?? '';
+        if (logo) {
+          signedLogo = await this.storageService.getSignedUrl(logo);
+        }
+        const filterSkills = item.skills.filter(
+          (skill: Skill) => skill.id !== null,
+        );
+        return {
+          ...item,
+          logo: signedLogo,
+          skills: filterSkills,
+        };
+      }),
+    );
+    return {
+      message: 'get all company successfully',
+      result: newData,
     };
   }
 }

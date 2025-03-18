@@ -20,6 +20,8 @@ import { BullModule } from '@nestjs/bullmq';
 import { ApplicationModule } from './modules/application/application.module';
 import { ApplicantModule } from './modules/applicant/applicant.module';
 import { JobModule } from './modules/job/job.module';
+import { CompanyRepository } from './databases/repositories/company.repository';
+import { SkillRepository } from './databases/repositories/skill.repository';
 @Module({
   imports: [
     ConfigModule.forRoot({ load: [configuration], isGlobal: true }),
@@ -59,6 +61,8 @@ import { JobModule } from './modules/job/job.module';
       provide: APP_GUARD,
       useClass: AuthGuard,
     },
+    CompanyRepository,
+    SkillRepository,
   ],
 })
 export class AppModule {}

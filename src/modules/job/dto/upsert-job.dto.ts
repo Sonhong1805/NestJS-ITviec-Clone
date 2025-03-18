@@ -9,7 +9,11 @@ import {
   IsString,
 } from 'class-validator';
 import { COMPANY_ADDRESS } from 'src/commons/enums/company.enum';
-import { APPLICANT_LEVEL, WORKING_MODEL } from 'src/commons/enums/job.enum';
+import {
+  APPLICANT_LEVEL,
+  CURRENCY_SALARY,
+  WORKING_MODEL,
+} from 'src/commons/enums/job.enum';
 
 export class UpsertJobDto {
   @ApiProperty()
@@ -81,10 +85,13 @@ export class UpsertJobDto {
   @IsOptional()
   maxSalary: number;
 
-  @ApiProperty()
-  @IsString()
+  @ApiProperty({
+    example: CURRENCY_SALARY.USD,
+    enum: CURRENCY_SALARY,
+  })
+  @IsEnum(CURRENCY_SALARY)
   @IsOptional()
-  currencySalary: string;
+  currencySalary: CURRENCY_SALARY;
 
   @ApiProperty()
   @IsDate()

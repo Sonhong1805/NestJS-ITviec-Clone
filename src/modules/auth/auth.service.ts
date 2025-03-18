@@ -322,8 +322,8 @@ export class AuthService {
       position,
       phoneNumber,
       companyName,
-      companyAddress,
-      companyWebsite,
+      location,
+      website,
     } = body;
 
     const password = randomPassword();
@@ -354,8 +354,8 @@ export class AuthService {
         position,
         name: companyName,
         slug,
-        location: companyAddress,
-        website: companyWebsite,
+        location,
+        website,
       });
       await queryRunner.commitTransaction();
 

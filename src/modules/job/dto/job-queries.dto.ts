@@ -17,6 +17,11 @@ export class JobQueriesDto extends CommonQueryDto {
   @IsOptional()
   keyword: string;
 
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  skill: string;
+
   @ApiProperty({
     example: COMPANY_ADDRESS.HA_NOI,
     enum: COMPANY_ADDRESS,
@@ -24,7 +29,7 @@ export class JobQueriesDto extends CommonQueryDto {
   })
   @IsEnum(COMPANY_ADDRESS)
   @IsOptional()
-  companyAddress: COMPANY_ADDRESS;
+  city: COMPANY_ADDRESS;
 
   @ApiProperty({
     example: [APPLICANT_LEVEL.FRESHER],
@@ -38,6 +43,13 @@ export class JobQueriesDto extends CommonQueryDto {
     (Array.isArray(value) ? value : [value]).filter(Boolean),
   )
   levels: APPLICANT_LEVEL[];
+
+  @ApiProperty()
+  @IsOptional()
+  @Transform(({ value }) =>
+    (Array.isArray(value) ? value : [value]).filter(Boolean),
+  )
+  industries: string[];
 
   @ApiProperty({
     example: [COMPANY_TYPE.HEADHUNT],

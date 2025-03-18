@@ -5,5 +5,10 @@ export class UpsertIndustryDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  name: string;
+  nameVi: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  nameEn: string;
 }

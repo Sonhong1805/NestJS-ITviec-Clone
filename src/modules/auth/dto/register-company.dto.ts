@@ -39,10 +39,10 @@ export class RegisterCompanyDto {
   @IsEnum(COMPANY_ADDRESS)
   @IsString()
   @IsNotEmpty()
-  companyAddress: COMPANY_ADDRESS;
+  location: COMPANY_ADDRESS;
 
   @ApiProperty({ example: 'http//...' })
   @IsString()
   @IsOptional()
-  companyWebsite: string;
+  website: string;
 }

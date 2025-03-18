@@ -52,14 +52,28 @@ export class IndustryService {
 
   async getAll(queries: IndustryQueriesDto) {
     const { name } = queries;
-    const whereClause = name
-      ? {
-          name: ILike(`%${name}%`),
-        }
-      : {};
-    const allIndustry = await this.industryRepository.find({
-      where: whereClause,
-    });
+    const queryBuilder = await this.industryRepository
+      .createQueryBuilder('industry')
+      .select([
+        'industry.id as "id"',
+        'industry.nameEn as "name_en"',
+        'industry.nameVi as "name_vi"',
+        'industry.createdAt AS "createdAt"',
+        'industry.updatedAt AS "updatedAt"',
+        'industry.deletedAt AS "deletedAt"',
+      ]);
+
+    if (name) {
+      queryBuilder
+        .where('unaccent(industry.nameEn) ILike unaccent(:name)', {
+          name: `%${name}%`,
+        })
+        .orWhere('unaccent(industry.nameVi) ILike unaccent(:name)', {
+          name: `%${name}%`,
+        });
+    }
+
+    const allIndustry = await queryBuilder.getRawMany();
     return {
       message: 'Get all industry successfully',
       result: allIndustry,

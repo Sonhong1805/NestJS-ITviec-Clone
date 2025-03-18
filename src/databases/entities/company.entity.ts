@@ -29,6 +29,9 @@ export class Company extends BaseEntity {
   @Column('character varying', { name: 'name', nullable: true })
   name: string | null;
 
+  @Column('character varying', { name: 'label', nullable: true })
+  label: string | null;
+
   @Column('character varying', { name: 'slug', nullable: true })
   slug: string | null;
 

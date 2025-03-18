@@ -40,9 +40,21 @@ export class JobController {
   }
 
   @Public()
-  @Get(':id')
-  getDetail(@Param('id') id: number, @GetUser() user: User) {
-    return this.jobService.getDetail(id, user);
+  @Get('company/:param')
+  getJobsByCompany(@Param('param') param: string) {
+    return this.jobService.getJobsByCompany(param);
+  }
+
+  @Public()
+  @Get('quantity')
+  getQuantity() {
+    return this.jobService.getQuantity();
+  }
+
+  @Public()
+  @Get(':slug')
+  getDetail(@Param('slug') slug: string, @GetUser() user: User) {
+    return this.jobService.getDetail(slug, user);
   }
 
   @Roles(ROLE.COMPANY)

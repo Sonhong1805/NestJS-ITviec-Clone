@@ -14,6 +14,8 @@ import { JobSkill } from 'src/databases/entities/job-skill.entity';
 import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
 import { JobQueriesDto } from './dto/job-queries.dto';
 import { convertKeySortJob } from 'src/commons/utils/helper';
+import { StorageService } from '../storage/storage.service';
+import { Skill } from 'src/databases/entities/skill.entity';
 
 @Injectable()
 export class JobService {
@@ -25,6 +27,7 @@ export class JobService {
     private readonly resdisService: ResdisService,
     private readonly dataSource: DataSource,
     private readonly jobSaveRepository: JobSaveRepository,
+    private readonly storageService: StorageService,
   ) {}
 
   async create(body: UpsertJobDto, user: User) {
@@ -37,10 +40,20 @@ export class JobService {
     await queryRunner.startTransaction();
 
     try {
-      body.slug = convertToSlug(body.title);
       const newJob = await queryRunner.manager.save(Job, {
         ...body,
         companyId: findCompany.id,
+      });
+
+      let slug = convertToSlug(newJob.title);
+      const existJob = await queryRunner.manager.findOneBy(Job, { slug });
+      if (existJob) {
+        slug = `${slug}-${newJob.id}`;
+      }
+
+      const updatedSlug = await queryRunner.manager.save(Job, {
+        ...newJob,
+        slug,
       });
 
       const { skillIds } = body;
@@ -56,7 +69,7 @@ export class JobService {
 
       return {
         message: 'Create job successfully',
-        result: newJob,
+        result: updatedSlug,
       };
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -70,91 +83,157 @@ export class JobService {
       userId: user.id,
     });
 
-    const findjob = await this.jobRepository.findOne({
+    const findJob = await this.jobRepository.findOne({
       where: {
         id,
       },
     });
 
-    if (!findjob) {
+    if (!findJob) {
       throw new HttpException('job not found', HttpStatus.NOT_FOUND);
     }
 
-    if (findCompany.id !== findjob.companyId) {
+    if (findCompany.id !== findJob.companyId) {
       throw new HttpException('job forbidden', HttpStatus.FORBIDDEN);
     }
+
+    let slug = findJob.slug;
+    if (findJob.title !== body.title) {
+      slug = convertToSlug(body.title);
+      const existJob = await this.jobRepository.findOneBy({ slug });
+      if (existJob) {
+        slug = `${slug}-${findJob.id}`;
+      }
+    }
+
+    console.log(slug);
+
+    body.slug = slug;
 
     const { skillIds } = body;
     delete body.skillIds;
 
     const updatedjob = await this.jobRepository.save({
-      ...findjob,
+      ...findJob,
       ...body,
     });
 
     await this.jobSkillRepository.delete({ jobId: id });
 
     const jobSkills = skillIds.map((skillId) => ({
-      jobId: findjob.id,
+      jobId: findJob.id,
       skillId,
     }));
 
     await this.jobSkillRepository.save(jobSkills);
 
     return {
-      message: 'Update job successfully',
+      message: 'update job successfully',
       result: updatedjob,
     };
   }
 
-  async getDetail(id: number, user: User) {
-    const findjob = await this.jobRepository.findOne({
-      where: {
-        id,
-      },
-    });
+  async getDetail(slug: string, user: User) {
+    const queryBuilder = await this.jobRepository
+      .createQueryBuilder('job')
+      .leftJoin('job.company', 'company')
+      .leftJoin('job.jobSkills', 'jobSkill')
+      .leftJoin('jobSkill.skill', 'skill')
+      .leftJoin('company.industry', 'industry')
+      .select([
+        'job.id AS "id"',
+        'job.title AS "title"',
+        'job.slug AS "slug"',
+        'job.minSalary AS "minSalary"',
+        'job.maxSalary AS "maxSalary"',
+        'job.currencySalary AS "currencySalary"',
+        'job.level AS "level"',
+        'job.location AS "location"',
+        'job.workingModel AS "workingModel"',
+        'job.descriptions AS "descriptions"',
+        'job.requirement AS "requirement"',
+        'job.startDate AS "startDate"',
+        'job.endDate AS "endDate"',
+        'job.countView AS "countView"',
+        'job.quantity AS "quantity"',
+        'job.createdAt AS "createdAt"',
+        'job.updatedAt AS "updatedAt"',
+        'job.deletedAt AS "deletedAt"',
+        'job.status AS "status"',
+        `json_build_object(
+          'id', company.id,
+          'name', company.name,
+          'slug', company.slug,
+          'location', company.location,
+          'companyType', company.companyType,
+          'overtimePolicy', company.overtimePolicy,
+          'companySize', company.companySize,
+          'workingDay', company.workingDay,
+          'website', company.website,
+          'country', company.country,
+          'logo', company.logo,
+          'industry', json_build_object(
+            'id', industry.id,
+            'name_en', industry.name_en,
+            'name_vi', industry.name_vi
+          )
+        ) AS company`,
+        "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
+      ])
+      .where('job.slug = :slug', { slug })
+      .groupBy('job.id, company.id, industry.id');
 
-    if (!findjob) {
+    const findJob = await queryBuilder.getRawOne();
+
+    if (!findJob) {
       throw new HttpException('not found', HttpStatus.NOT_FOUND);
     }
 
-    findjob['isUserFavourite'] = false;
+    findJob['isUserFavourite'] = false;
 
     if (user) {
-      const findjobSave = await this.jobSaveRepository.findOne({
+      const findJobSave = await this.jobSaveRepository.findOne({
         where: {
           userId: user.id,
-          jobId: id,
+          jobId: findJob.id,
         },
       });
 
-      if (findjobSave) {
-        findjob['isUserFavourite'] = true;
+      if (findJobSave) {
+        findJob['isUserFavourite'] = true;
       }
 
-      const findjobView = await this.jobViewRepository.findOne({
+      const findJobView = await this.jobViewRepository.findOne({
         where: {
           userId: user.id,
-          jobId: id,
+          jobId: findJob.id,
         },
       });
 
-      if (findjobView) {
+      if (findJobView) {
         await this.jobViewRepository.save({
-          ...findjobView,
+          ...findJobView,
           updatedAt: new Date(),
         });
       } else {
         await this.jobViewRepository.save({
           userId: user.id,
-          jobId: id,
+          jobId: findJob.id,
         });
       }
     }
 
+    if (findJob.company.logo) {
+      findJob.company.logo = await this.storageService.getSignedUrl(
+        findJob.company.logo,
+      );
+    }
+
+    findJob.skills = findJob.skills.filter((skill: Skill) => skill.id !== null);
+
     return {
       message: 'get job successfully',
-      result: findjob,
+      result: findJob,
     };
   }
 
@@ -194,7 +273,7 @@ export class JobService {
       page,
       limit,
       keyword,
-      companyAddress,
+      city,
       companyTypes,
       levels,
       industryIds,
@@ -202,51 +281,81 @@ export class JobService {
       maxSalary,
       workingModels,
       sort,
+      industries,
     } = queries;
+    console.log(queries);
 
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.jobRepository
       .createQueryBuilder('job')
-      .leftJoin('job.company', 'c')
-      .leftJoin('job.jobSkills', 'm')
-      .leftJoin('m.skill', 's')
+      .leftJoin('job.company', 'company')
+      .leftJoin('job.jobSkills', 'jobSkill')
+      .leftJoin('jobSkill.skill', 'skill')
+      .leftJoin('company.industry', 'industry')
       .select([
         'job.id AS "id"',
         'job.title AS "title"',
+        'job.slug AS "slug"',
         'job.minSalary AS "minSalary"',
         'job.maxSalary AS "maxSalary"',
-        'job.summary AS "summary"',
+        'job.currencySalary AS "currencySalary"',
         'job.level AS "level"',
+        'job.location AS "location"',
         'job.workingModel AS "workingModel"',
+        'job.descriptions AS "descriptions"',
+        'job.requirement AS "requirement"',
+        'job.startDate AS "startDate"',
+        'job.endDate AS "endDate"',
+        'job.countView AS "countView"',
+        'job.quantity AS "quantity"',
         'job.createdAt AS "createdAt"',
-        'c.id AS "companyId"',
-        'c.name AS "companyName"',
-        'c.location AS "companyAddress"',
-        'c.companySize AS "companySize"',
-        'c.companyType AS "companyType"',
-        'c.industry AS "companyIndustry"',
-        'c.logo AS "companyLogo"',
-        "JSON_AGG(json_build_object('id',s.id,'name', s.name)) AS jobSkills",
+        'job.updatedAt AS "updatedAt"',
+        'job.deletedAt AS "deletedAt"',
+        'job.status AS "status"',
+        `json_build_object(
+          'id', company.id,
+          'slug', company.slug,
+          'location', company.location,
+          'workingDay', company.workingDay,
+          'companyType', company.companyType,
+          'overtimePolicy', company.overtimePolicy,
+          'companySize', company.companySize,
+          'companyName', company.name,
+          'website', company.website,
+          'country', company.country,
+          'logo', company.logo,
+          'industry', json_build_object(
+            'id', industry.id,
+            'name_en', industry.name_en,
+            'name_vi', industry.name_vi
+          )
+        ) AS company`,
+        "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
       ])
-      .groupBy('job.id, c.id');
+      .groupBy('job.id, company.id, industry.id');
 
     if (keyword) {
       queryBuilder
-        .andWhere('s.name ILIKE :keyword', {
-          keyword: `%${keyword}%`,
-        })
+        .andWhere(
+          `EXISTS (
+          SELECT 1 FROM job_skills
+          JOIN skills ON job_skills.skill_id = skills.id
+          WHERE job_skills.job_id = job.id
+          AND skills.name ILIKE :keyword
+        )`,
+          { keyword: `%${keyword}%` },
+        )
         .orWhere('job.title ILIKE :keyword', {
           keyword: `%${keyword}%`,
         })
-        .orWhere('job.summary ILIKE :keyword', {
+        .orWhere('job.slug ILIKE :keyword', {
           keyword: `%${keyword}%`,
         })
-        .orWhere('c.name ILIKE :keyword', {
+        .orWhere('company.name ILIKE :keyword', {
           keyword: `%${keyword}%`,
         });
     }
-
     if (sort) {
       const order = convertKeySortJob(sort);
 
@@ -257,13 +366,13 @@ export class JobService {
       queryBuilder.addOrderBy('job.createdAt', 'DESC');
     }
 
-    if (companyAddress) {
-      queryBuilder.andWhere('c.location = :address', {
-        address: companyAddress,
+    if (city) {
+      queryBuilder.andWhere('job.location = :city', {
+        city,
       });
     }
     if (companyTypes) {
-      queryBuilder.andWhere('c.companyType IN (:...types)', {
+      queryBuilder.andWhere('company.companyType IN (:...types)', {
         types: companyTypes,
       });
     }
@@ -278,9 +387,15 @@ export class JobService {
       });
     }
     if (industryIds) {
-      queryBuilder.andWhere('c.industry IN (:...industryIds)', {
+      queryBuilder.andWhere('company.industry IN (:...industryIds)', {
         industryIds,
       });
+    }
+    if (industries) {
+      queryBuilder.andWhere(
+        '(industry.name_en IN (:...industries) OR industry.name_vi IN (:...industries))',
+        { industries },
+      );
     }
 
     if (minSalary && maxSalary) {
@@ -296,17 +411,37 @@ export class JobService {
     queryBuilder.limit(limit).offset(skip);
 
     const data = await queryBuilder.getRawMany();
+    const newData = await Promise.all(
+      data.map(async (item) => {
+        const logo = item.company.logo;
+        let signedLogo = logo ?? '';
+        if (logo) {
+          signedLogo = await this.storageService.getSignedUrl(logo);
+        }
+        const filterSkills = item.skills.filter(
+          (skill: Skill) => skill.id !== null,
+        );
+        return {
+          ...item,
+          skills: filterSkills,
+          company: { ...item.company, logo: signedLogo },
+        };
+      }),
+    );
+
     const totalItems = await queryBuilder.getCount();
     const totalPages = Math.ceil(totalItems / limit);
-
+    const pagination = {
+      totalPages,
+      totalItems,
+      page,
+      limit,
+    };
     return {
-      message: 'get all job',
+      message: 'get all job successfully',
       result: {
-        totalPages,
-        totalItems,
-        page,
-        limit,
-        data,
+        pagination,
+        data: newData,
       },
     };
   }
@@ -383,6 +518,58 @@ export class JobService {
           limit,
         },
       },
+    };
+  }
+
+  async getQuantity() {
+    const quantity = await this.jobRepository.count();
+
+    return {
+      message: 'get quantity all job successfully',
+      result: quantity,
+    };
+  }
+
+  async getJobsByCompany(param: string) {
+    const queryBuilder = this.jobRepository
+      .createQueryBuilder('job')
+      .leftJoin('job.company', 'company')
+      .leftJoin('job.jobSkills', 'jobSkill')
+      .leftJoin('jobSkill.skill', 'skill')
+      .leftJoin('company.industry', 'industry')
+      .select([
+        'job.id AS "id"',
+        'job.title AS "title"',
+        'job.slug AS "slug"',
+        'job.minSalary AS "minSalary"',
+        'job.maxSalary AS "maxSalary"',
+        'job.currencySalary AS "currencySalary"',
+        'job.level AS "level"',
+        'job.location AS "location"',
+        'job.workingModel AS "workingModel"',
+        'job.descriptions AS "descriptions"',
+        'job.requirement AS "requirement"',
+        'job.startDate AS "startDate"',
+        'job.endDate AS "endDate"',
+        'job.countView AS "countView"',
+        'job.quantity AS "quantity"',
+        'job.createdAt AS "createdAt"',
+        'job.updatedAt AS "updatedAt"',
+        'job.deletedAt AS "deletedAt"',
+        'job.status AS "status"',
+        "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
+      ])
+      .groupBy('job.id, company.id, industry.id');
+    if (!isNaN(+param)) {
+      queryBuilder.where('company.userId = :userId', { userId: +param });
+    } else {
+      queryBuilder.where('company.slug = :slug', { slug: param });
+    }
+    const data = await queryBuilder.getRawMany();
+
+    return {
+      message: 'get all job by slug company successfully',
+      result: data,
     };
   }
 }

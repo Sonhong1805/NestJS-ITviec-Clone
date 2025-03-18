@@ -10,3 +10,8 @@ export enum WORKING_MODEL {
   REMOTE = 'Remote',
   HYBRID = 'Hybrid',
 }
+
+export enum CURRENCY_SALARY {
+  VND = 'VND',
+  USD = 'USD',
+}

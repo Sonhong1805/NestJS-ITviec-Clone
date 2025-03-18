@@ -4,7 +4,6 @@ import { User } from './entities/user.entity';
 import { Skill } from './entities/skill.entity';
 import { Company } from './entities/company.entity';
 import { Industry } from './entities/industry.entity';
-import { Job } from './entities/Job.entity';
 import { JobSkill } from './entities/job-skill.entity';
 import { JobSave } from './entities/job-save.entity';
 import { JobView } from './entities/job-view.entity';
@@ -16,6 +15,7 @@ import { ApplicantExperience } from './entities/applicant-experience.entity';
 import { ApplicantSkill } from './entities/applicant-skill.entity';
 import { Application } from './entities/application.entity';
 import { CompanySkill } from './entities/company-skill.entity';
+import { Job } from './entities/job.entity';
 
 @Global()
 @Module({

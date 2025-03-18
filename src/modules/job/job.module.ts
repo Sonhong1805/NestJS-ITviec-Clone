@@ -7,6 +7,7 @@ import { JobSkillRepository } from 'src/databases/repositories/job-skill.reposit
 import { ResdisService } from '../redis/redis.service';
 import { JobViewRepository } from 'src/databases/repositories/job-view.repository';
 import { JobSaveRepository } from 'src/databases/repositories/job-save.repository';
+import { StorageService } from '../storage/storage.service';
 
 @Module({
   controllers: [JobController],
@@ -18,6 +19,7 @@ import { JobSaveRepository } from 'src/databases/repositories/job-save.repositor
     ResdisService,
     JobViewRepository,
     JobSaveRepository,
+    StorageService,
   ],
 })
 export class JobModule {}

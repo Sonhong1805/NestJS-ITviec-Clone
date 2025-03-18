@@ -32,6 +32,12 @@ export class CompanyController {
     return this.companyService.getDetail(param);
   }
 
+  @Public()
+  @Get('')
+  async getAll() {
+    return this.companyService.getAll();
+  }
+
   @Roles(ROLE.COMPANY)
   @Put(':id')
   @ApiConsumes('multipart/form-data')
