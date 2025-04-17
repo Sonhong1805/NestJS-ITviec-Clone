@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Application } from './application.entity';
-import { JobSave } from './job-save.entity';
+import { Wishlist } from './wishlist.entity';
 import { Company } from './company.entity';
 import { BaseEntity } from './base.entity';
 import { JobSkill } from './job-skill.entity';
@@ -71,8 +71,8 @@ export class Job extends BaseEntity {
   @OneToMany(() => Application, (applications) => applications.job)
   applications: Application[];
 
-  @OneToMany(() => JobSave, (jobSaves) => jobSaves.job)
-  jobSaves: JobSave[];
+  @OneToMany(() => Wishlist, (wishlist) => wishlist.job)
+  wishlists: Wishlist[];
 
   @OneToMany(() => JobSkill, (jobSkills) => jobSkills.job)
   jobSkills: JobSkill[];

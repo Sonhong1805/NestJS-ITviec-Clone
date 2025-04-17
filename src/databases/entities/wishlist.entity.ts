@@ -10,9 +10,9 @@ import { User } from './user.entity';
 import { BaseEntity } from './base.entity';
 import { Job } from './job.entity';
 
-@Index('job_saves_pkey', ['id'], { unique: true })
-@Entity('job_saves', { schema: 'public' })
-export class JobSave extends BaseEntity {
+@Index('wishlists_pkey', ['id'], { unique: true })
+@Entity('wishlists', { schema: 'public' })
+export class Wishlist extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
 
@@ -22,11 +22,11 @@ export class JobSave extends BaseEntity {
   @Column('integer', { name: 'job_id', nullable: true, unique: true })
   jobId: number | null;
 
-  @ManyToOne(() => Job, (jobs) => jobs.jobSaves)
+  @ManyToOne(() => Job, (jobs) => jobs.wishlists)
   @JoinColumn([{ name: 'job_id', referencedColumnName: 'id' }])
   job: Job;
 
-  @ManyToOne(() => User, (users) => users.jobSaves)
+  @ManyToOne(() => User, (users) => users.wishlists)
   @JoinColumn([{ name: 'user_id', referencedColumnName: 'id' }])
   user: User;
 }

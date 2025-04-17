@@ -10,8 +10,8 @@ import { Applicant } from './applicant.entity';
 import { Company } from './company.entity';
 import { CompanyFollow } from './company-follow.entity';
 import { CompanyReview } from './company-review.entity';
-import { JobSave } from './job-save.entity';
 import { JobView } from './job-view.entity';
+import { Wishlist } from './wishlist.entity';
 
 @Index('users_pkey', ['id'], { unique: true })
 @Entity('users', { schema: 'public' })
@@ -73,8 +73,8 @@ export class User {
   @OneToMany(() => CompanyReview, (companyReviews) => companyReviews.user)
   companyReviews: CompanyReview[];
 
-  @OneToMany(() => JobSave, (jobSaves) => jobSaves.user)
-  jobSaves: JobSave[];
+  @OneToMany(() => Wishlist, (wishlist) => wishlist.user)
+  wishlists: Wishlist[];
 
   @OneToMany(() => JobView, (jobViews) => jobViews.user)
   jobViews: JobView[];

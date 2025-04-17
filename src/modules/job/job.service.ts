@@ -6,7 +6,6 @@ import { JobViewRepository } from 'src/databases/repositories/job-view.repositor
 import { JobRepository } from 'src/databases/repositories/job.repository';
 import { ResdisService } from '../redis/redis.service';
 import { DataSource, In } from 'typeorm';
-import { JobSaveRepository } from 'src/databases/repositories/job-save.repository';
 import { UpsertJobDto } from './dto/upsert-job.dto';
 import { User } from 'src/databases/entities/user.entity';
 import { Job } from 'src/databases/entities/job.entity';
@@ -18,6 +17,7 @@ import { StorageService } from '../storage/storage.service';
 import { Skill } from 'src/databases/entities/skill.entity';
 import { ApplicationRepository } from 'src/databases/repositories/application.repository';
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
+import { WishlistRepository } from 'src/databases/repositories/wishlist.repository';
 
 @Injectable()
 export class JobService {
@@ -28,7 +28,7 @@ export class JobService {
     private readonly companyRepository: CompanyRepository,
     private readonly resdisService: ResdisService,
     private readonly dataSource: DataSource,
-    private readonly jobSaveRepository: JobSaveRepository,
+    private readonly wishlistRepository: WishlistRepository,
     private readonly storageService: StorageService,
     private readonly applicationRepository: ApplicationRepository,
     private readonly applicantRepository: ApplicantRepository,
@@ -192,18 +192,18 @@ export class JobService {
       throw new HttpException('not found', HttpStatus.NOT_FOUND);
     }
 
-    findJob['isUserFavourite'] = false;
+    findJob['wishlist'] = false;
 
     if (user) {
-      const findJobSave = await this.jobSaveRepository.findOne({
+      const findWishlist = await this.wishlistRepository.findOne({
         where: {
           userId: user.id,
           jobId: findJob.id,
         },
       });
 
-      if (findJobSave) {
-        findJob['isUserFavourite'] = true;
+      if (findWishlist) {
+        findJob['wishlist'] = true;
       }
 
       const findJobView = await this.jobViewRepository.findOne({
@@ -391,7 +391,6 @@ export class JobService {
     } else {
       queryBuilder.addOrderBy('job.createdAt', 'DESC');
     }
-
     if (city) {
       queryBuilder.andWhere('job.location = :city', {
         city,
@@ -423,7 +422,6 @@ export class JobService {
         { industries },
       );
     }
-
     if (minSalary && maxSalary) {
       queryBuilder
         .andWhere('job.minSalary >= :minSalary', {
@@ -473,8 +471,17 @@ export class JobService {
         });
 
         applicationsMap = new Map(applications.map((app) => [app.jobId, app]));
+        const wishlists = await this.wishlistRepository.find({
+          where: {
+            userId: user.id,
+            jobId: In(jobIds),
+          },
+        });
+        const wishlistIds = wishlists.map((item) => item.jobId);
+
         newData = newData.map((item) => ({
           ...item,
+          wishlist: wishlistIds.includes(item.id),
           hasApplied: applicationsMap.get(item.id) ?? null,
         }));
       }
@@ -517,60 +524,61 @@ export class JobService {
     };
   }
 
-  async favorite(id: number, user: User) {
-    const jobSave = await this.jobSaveRepository.findOneBy({
+  async wishlist(id: number, user: User) {
+    const wishlist = await this.wishlistRepository.findOneBy({
       jobId: id,
       userId: user.id,
     });
 
-    if (jobSave) {
-      await this.jobSaveRepository.delete({
+    if (wishlist) {
+      await this.wishlistRepository.delete({
         jobId: id,
         userId: user.id,
       });
     } else {
-      await this.jobSaveRepository.save({
+      await this.wishlistRepository.save({
         jobId: id,
         userId: user.id,
       });
     }
 
     return {
-      message: '',
+      message: 'wishlist job successfully',
+      result: wishlist ? false : true,
     };
   }
 
-  async getAllByFavorite(queries: CommonQueryDto, user: User) {
-    const { page, limit } = queries;
-    const skip = (page - 1) * limit;
-    const [data, total] = await this.jobRepository.findAndCount({
-      where: {
-        jobSaves: {
-          userId: user.id,
-        },
-      },
-      skip,
-      take: limit,
-      relations: ['jobSaves'],
-      order: {
-        jobSaves: {
-          createdAt: 'DESC',
-        },
-      },
-    });
+  // async getAllByFavorite(queries: CommonQueryDto, user: User) {
+  //   const { page, limit } = queries;
+  //   const skip = (page - 1) * limit;
+  //   const [data, total] = await this.jobRepository.findAndCount({
+  //     where: {
+  //       jobSaves: {
+  //         userId: user.id,
+  //       },
+  //     },
+  //     skip,
+  //     take: limit,
+  //     relations: ['jobSaves'],
+  //     order: {
+  //       jobSaves: {
+  //         createdAt: 'DESC',
+  //       },
+  //     },
+  //   });
 
-    return {
-      message: 'get all fa jobs successfully',
-      result: {
-        data,
-        metadata: {
-          total,
-          page,
-          limit,
-        },
-      },
-    };
-  }
+  //   return {
+  //     message: 'get all fa jobs successfully',
+  //     result: {
+  //       data,
+  //       metadata: {
+  //         total,
+  //         page,
+  //         limit,
+  //       },
+  //     },
+  //   };
+  // }
 
   async getQuantity() {
     const quantity = await this.jobRepository.count();

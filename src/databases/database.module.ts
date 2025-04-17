@@ -5,7 +5,6 @@ import { Skill } from './entities/skill.entity';
 import { Company } from './entities/company.entity';
 import { Industry } from './entities/industry.entity';
 import { JobSkill } from './entities/job-skill.entity';
-import { JobSave } from './entities/job-save.entity';
 import { JobView } from './entities/job-view.entity';
 import { CompanyFollow } from './entities/company-follow.entity';
 import { CompanyReview } from './entities/company-review.entity';
@@ -17,6 +16,7 @@ import { Application } from './entities/application.entity';
 import { CompanySkill } from './entities/company-skill.entity';
 import { Job } from './entities/job.entity';
 import { ApplicantLocation } from './entities/applicant-location.entity';
+import { Wishlist } from './entities/wishlist.entity';
 
 @Global()
 @Module({
@@ -31,7 +31,7 @@ import { ApplicantLocation } from './entities/applicant-location.entity';
       CompanySkill,
       Job,
       JobSkill,
-      JobSave,
+      Wishlist,
       JobView,
       Applicant,
       ApplicantEducation,
