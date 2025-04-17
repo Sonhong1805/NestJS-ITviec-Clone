@@ -65,8 +65,8 @@ export class JobController {
 
   @Public()
   @Get('')
-  getAll(@Query('') queries: JobQueriesDto) {
-    return this.jobService.getAll(queries);
+  getAll(@Query('') queries: JobQueriesDto, @GetUser() user: User) {
+    return this.jobService.getAll(queries, user);
   }
 
   @Roles(ROLE.APPLICANT)

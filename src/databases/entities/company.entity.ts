@@ -17,7 +17,7 @@ import { Job } from './job.entity';
 import { CompanySkill } from './company-skill.entity';
 
 @Index('companies_pkey', ['id'], { unique: true })
-@Index('companies_user_id_key', ['userId'], { unique: true })
+@Index('companies_user_id_fkey', ['userId'], { unique: true })
 @Entity('companies', { schema: 'public' })
 export class Company extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
@@ -29,8 +29,8 @@ export class Company extends BaseEntity {
   @Column('character varying', { name: 'name', nullable: true })
   name: string | null;
 
-  @Column('character varying', { name: 'label', nullable: true })
-  label: string | null;
+  @Column('character varying', { name: 'tagline', nullable: true })
+  tagline: string | null;
 
   @Column('character varying', { name: 'slug', nullable: true })
   slug: string | null;

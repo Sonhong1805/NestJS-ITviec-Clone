@@ -5,7 +5,7 @@ import { JobSkillRepository } from 'src/databases/repositories/job-skill.reposit
 import { JobViewRepository } from 'src/databases/repositories/job-view.repository';
 import { JobRepository } from 'src/databases/repositories/job.repository';
 import { ResdisService } from '../redis/redis.service';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { JobSaveRepository } from 'src/databases/repositories/job-save.repository';
 import { UpsertJobDto } from './dto/upsert-job.dto';
 import { User } from 'src/databases/entities/user.entity';
@@ -16,6 +16,8 @@ import { JobQueriesDto } from './dto/job-queries.dto';
 import { convertKeySortJob } from 'src/commons/utils/helper';
 import { StorageService } from '../storage/storage.service';
 import { Skill } from 'src/databases/entities/skill.entity';
+import { ApplicationRepository } from 'src/databases/repositories/application.repository';
+import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
 
 @Injectable()
 export class JobService {
@@ -28,6 +30,8 @@ export class JobService {
     private readonly dataSource: DataSource,
     private readonly jobSaveRepository: JobSaveRepository,
     private readonly storageService: StorageService,
+    private readonly applicationRepository: ApplicationRepository,
+    private readonly applicantRepository: ApplicantRepository,
   ) {}
 
   async create(body: UpsertJobDto, user: User) {
@@ -106,8 +110,6 @@ export class JobService {
       }
     }
 
-    console.log(slug);
-
     body.slug = slug;
 
     const { skillIds } = body;
@@ -162,7 +164,8 @@ export class JobService {
         'job.status AS "status"',
         `json_build_object(
           'id', company.id,
-          'name', company.name,
+          'companyName', company.name,
+          'tagline', company.tagline,
           'slug', company.slug,
           'location', company.location,
           'companyType', company.companyType,
@@ -221,6 +224,29 @@ export class JobService {
           jobId: findJob.id,
         });
       }
+
+      const applicant = await this.applicantRepository.findOne({
+        where: { userId: user.id },
+      });
+
+      const application = await this.applicationRepository.findOne({
+        where: {
+          applicantId: applicant.id,
+          jobId: findJob.id,
+        },
+      });
+      if (application) {
+        findJob.hasApplied = application;
+      }
+
+      const findApplication = await this.applicationRepository.findOne({
+        where: {
+          applicantId: applicant.id,
+        },
+      });
+      if (findApplication) {
+        findJob.uploadAt = findApplication.createdAt;
+      }
     }
 
     if (findJob.company.logo) {
@@ -268,7 +294,7 @@ export class JobService {
     };
   }
 
-  async getAll(queries: JobQueriesDto) {
+  async getAll(queries: JobQueriesDto, user: User) {
     const {
       page,
       limit,
@@ -411,7 +437,8 @@ export class JobService {
     queryBuilder.limit(limit).offset(skip);
 
     const data = await queryBuilder.getRawMany();
-    const newData = await Promise.all(
+
+    let newData = await Promise.all(
       data.map(async (item) => {
         const logo = item.company.logo;
         let signedLogo = logo ?? '';
@@ -428,6 +455,30 @@ export class JobService {
         };
       }),
     );
+
+    let applicationsMap = new Map<number, any>();
+    if (user) {
+      const applicant = await this.applicantRepository.findOne({
+        where: { userId: user.id },
+      });
+
+      if (applicant) {
+        const jobIds = newData.map((item) => item.id);
+
+        const applications = await this.applicationRepository.find({
+          where: {
+            applicantId: applicant.id,
+            jobId: In(jobIds),
+          },
+        });
+
+        applicationsMap = new Map(applications.map((app) => [app.jobId, app]));
+        newData = newData.map((item) => ({
+          ...item,
+          hasApplied: applicationsMap.get(item.id) ?? null,
+        }));
+      }
+    }
 
     const totalItems = await queryBuilder.getCount();
     const totalPages = Math.ceil(totalItems / limit);

@@ -1,5 +1,5 @@
 import { StorageService } from './../storage/storage.service';
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { User } from 'src/databases/entities/user.entity';
 import { ApplicantSkillRepository } from 'src/databases/repositories/applicant-skill.repository';
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
@@ -13,6 +13,45 @@ export class ApplicantService {
     private readonly applicantRepository: ApplicantRepository,
     private readonly applicantSkillRepository: ApplicantSkillRepository,
   ) {}
+
+  async getDetailByUser(userId: number) {
+    const queryBuilder = await this.applicantRepository
+      .createQueryBuilder('applicant')
+      .leftJoin('applicant.applicantLocations', 'al')
+      .select([
+        'applicant.id AS "id"',
+        'applicant.userId AS "userId"',
+        'applicant.title AS "title"',
+        'applicant.cv AS "cv"',
+        'applicant.address AS "address"',
+        'applicant.city AS "city"',
+        'applicant.gender AS "gender"',
+        'applicant.link AS "link"',
+        'applicant.dob AS "dob"',
+        'applicant.avatar AS "avatar"',
+        `COALESCE(
+          JSON_AGG(
+            json_build_object('id', al.id, 'location', al.location)
+          ) FILTER (WHERE al.id IS NOT NULL), '[]'
+        ) AS locations`,
+      ])
+      .where('applicant.userId = :userId', { userId })
+      .groupBy('applicant.id');
+
+    const findApplicant = await queryBuilder.getRawOne();
+    if (!findApplicant) {
+      throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
+    }
+    if (findApplicant.cv) {
+      findApplicant.cvUrl = await this.storageService.getSignedUrl(
+        findApplicant.cv,
+      );
+    }
+    return {
+      message: 'get applicant by user id successfully',
+      result: findApplicant,
+    };
+  }
 
   async update(body: UpdateApplicantDto, user: User) {
     const findApplicant = await this.applicantRepository.findOne({

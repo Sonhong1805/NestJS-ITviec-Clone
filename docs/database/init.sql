@@ -240,3 +240,8 @@ ALTER TABLE "applicant_skills" ADD FOREIGN KEY ("skill_id") REFERENCES "skills" 
 ALTER TABLE "job_skills" ADD FOREIGN KEY ("skill_id") REFERENCES "skills" ("id");
 
 ALTER TABLE "job_skills" ADD FOREIGN KEY ("job_id") REFERENCES "jobs" ("id");
+
+ALTER TABLE "applicant_locations" ADD FOREIGN KEY ("applicant_id") REFERENCES "applicants" ("id");
+
+ALTER TABLE applicant_locations
+ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;

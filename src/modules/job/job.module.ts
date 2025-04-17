@@ -8,6 +8,8 @@ import { ResdisService } from '../redis/redis.service';
 import { JobViewRepository } from 'src/databases/repositories/job-view.repository';
 import { JobSaveRepository } from 'src/databases/repositories/job-save.repository';
 import { StorageService } from '../storage/storage.service';
+import { ApplicationRepository } from 'src/databases/repositories/application.repository';
+import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
 
 @Module({
   controllers: [JobController],
@@ -20,6 +22,8 @@ import { StorageService } from '../storage/storage.service';
     JobViewRepository,
     JobSaveRepository,
     StorageService,
+    ApplicationRepository,
+    ApplicantRepository,
   ],
 })
 export class JobModule {}

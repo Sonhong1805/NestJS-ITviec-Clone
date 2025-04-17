@@ -16,6 +16,7 @@ import { ApplicantSkill } from './entities/applicant-skill.entity';
 import { Application } from './entities/application.entity';
 import { CompanySkill } from './entities/company-skill.entity';
 import { Job } from './entities/job.entity';
+import { ApplicantLocation } from './entities/applicant-location.entity';
 
 @Global()
 @Module({
@@ -37,6 +38,7 @@ import { Job } from './entities/job.entity';
       ApplicantExperience,
       ApplicantSkill,
       Application,
+      ApplicantLocation,
     ]),
   ],
   exports: [TypeOrmModule],

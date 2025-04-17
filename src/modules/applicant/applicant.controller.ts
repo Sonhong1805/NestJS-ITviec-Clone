@@ -22,6 +22,12 @@ export class ApplicantController {
   constructor(private readonly applicantService: ApplicantService) {}
 
   @Roles(ROLE.APPLICANT)
+  @Get(':userId')
+  getDetailByUser(@Param('userId') userId: number) {
+    return this.applicantService.getDetailByUser(userId);
+  }
+
+  @Roles(ROLE.APPLICANT)
   @Put()
   update(@Body() body: UpdateApplicantDto, @GetUser() user: User) {
     return this.applicantService.update(body, user);

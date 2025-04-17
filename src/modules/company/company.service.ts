@@ -195,7 +195,6 @@ export class CompanyService {
       .leftJoin('company.companySkills', 'companySkill')
       .leftJoin('companySkill.skill', 'skill')
       .leftJoin('company.industry', 'industry')
-      // .leftJoin('company.jobs', 'job')
       .select([
         'company.id as "id"',
         'company.name as "companyName"',

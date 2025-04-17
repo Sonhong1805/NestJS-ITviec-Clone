@@ -1,34 +1,36 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateApplicationDto {
   @ApiProperty({ required: false })
   @IsString()
   @IsNotEmpty()
-  name: string;
+  fullName: string;
 
   @ApiProperty({ required: false })
   @IsString()
   @IsNotEmpty()
-  phone: string;
+  phoneNumber: string;
 
   @ApiProperty({ required: false })
-  @IsString()
-  @IsNotEmpty()
-  preferWorkLocation: string;
-
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsNotEmpty()
-  resume: string;
-
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   coverLetter: string;
 
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsNotEmpty()
-  jobId: number;
+  @ApiProperty({ required: false, type: [String] })
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  @Transform(({ value }) =>
+    (Array.isArray(value) ? value.map((item) => item) : [value]).filter(
+      Boolean,
+    ),
+  )
+  locations: string[];
 }
