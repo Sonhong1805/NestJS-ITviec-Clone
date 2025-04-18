@@ -588,47 +588,4 @@ export class JobService {
       result: quantity,
     };
   }
-
-  async getJobsByCompany(param: string) {
-    const queryBuilder = this.jobRepository
-      .createQueryBuilder('job')
-      .leftJoin('job.company', 'company')
-      .leftJoin('job.jobSkills', 'jobSkill')
-      .leftJoin('jobSkill.skill', 'skill')
-      .leftJoin('company.industry', 'industry')
-      .select([
-        'job.id AS "id"',
-        'job.title AS "title"',
-        'job.slug AS "slug"',
-        'job.minSalary AS "minSalary"',
-        'job.maxSalary AS "maxSalary"',
-        'job.currencySalary AS "currencySalary"',
-        'job.level AS "level"',
-        'job.location AS "location"',
-        'job.workingModel AS "workingModel"',
-        'job.descriptions AS "descriptions"',
-        'job.requirement AS "requirement"',
-        'job.startDate AS "startDate"',
-        'job.endDate AS "endDate"',
-        'job.countView AS "countView"',
-        'job.quantity AS "quantity"',
-        'job.createdAt AS "createdAt"',
-        'job.updatedAt AS "updatedAt"',
-        'job.deletedAt AS "deletedAt"',
-        'job.status AS "status"',
-        "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
-      ])
-      .groupBy('job.id, company.id, industry.id');
-    if (!isNaN(+param)) {
-      queryBuilder.where('company.userId = :userId', { userId: +param });
-    } else {
-      queryBuilder.where('company.slug = :slug', { slug: param });
-    }
-    const data = await queryBuilder.getRawMany();
-
-    return {
-      message: 'get all job by slug company successfully',
-      result: data,
-    };
-  }
 }

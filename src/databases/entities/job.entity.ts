@@ -8,11 +8,11 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Application } from './application.entity';
-import { Wishlist } from './wishlist.entity';
 import { Company } from './company.entity';
 import { BaseEntity } from './base.entity';
 import { JobSkill } from './job-skill.entity';
 import { JobView } from './job-view.entity';
+import { Wishlist } from './wishlist.entity';
 
 @Index('jobs_pkey', ['id'], { unique: true })
 @Entity('jobs', { schema: 'public' })
@@ -71,7 +71,7 @@ export class Job extends BaseEntity {
   @OneToMany(() => Application, (applications) => applications.job)
   applications: Application[];
 
-  @OneToMany(() => Wishlist, (wishlist) => wishlist.job)
+  @OneToMany(() => Wishlist, (wishlists) => wishlists.job)
   wishlists: Wishlist[];
 
   @OneToMany(() => JobSkill, (jobSkills) => jobSkills.job)

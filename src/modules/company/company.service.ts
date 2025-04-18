@@ -19,6 +19,8 @@ import { UserRepository } from 'src/databases/repositories/user.repository';
 import { CompanySkill } from 'src/databases/entities/company-skill.entity';
 import { CompanySkillRepository } from 'src/databases/repositories/company-skill.repository';
 import { Skill } from 'src/databases/entities/skill.entity';
+import { CompanyFollowRepository } from 'src/databases/repositories/company-follow.repository';
+import { JobRepository } from 'src/databases/repositories/job.repository';
 
 @Injectable()
 export class CompanyService {
@@ -30,6 +32,8 @@ export class CompanyService {
     private readonly companyReviewRepository: CompanyReviewRepository,
     private readonly userRepository: UserRepository,
     private readonly companySkillRepository: CompanySkillRepository,
+    private readonly companyFollowRepository: CompanyFollowRepository,
+    private readonly jobRepository: JobRepository,
   ) {}
 
   async update(
@@ -189,8 +193,8 @@ export class CompanyService {
     }
   }
 
-  async getDetail(param: string | number) {
-    const queryBuilder = await this.companyRepository
+  async getDetail(param: string | number, user: User) {
+    const companyQueryBuilder = await this.companyRepository
       .createQueryBuilder('company')
       .leftJoin('company.companySkills', 'companySkill')
       .leftJoin('companySkill.skill', 'skill')
@@ -216,17 +220,17 @@ export class CompanyService {
           'name_en', industry.name_en,
           'name_vi', industry.name_vi
         ) AS industry`,
-        "JSON_AGG(json_build_object('id',skill.id,'name', skill.name)) AS skills",
+        "COALESCE(JSON_AGG(json_build_object('id',skill.id,'name', skill.name)) FILTER (WHERE skill.id IS NOT NULL), '[]')  AS skills",
       ])
       .groupBy('company.id, industry.id');
 
     if (!isNaN(+param)) {
-      queryBuilder.where('company.userId = :userId', { userId: +param });
+      companyQueryBuilder.where('company.userId = :userId', { userId: +param });
     } else {
-      queryBuilder.where('company.slug = :slug', { slug: param });
+      companyQueryBuilder.where('company.slug = :slug', { slug: param });
     }
 
-    const findCompany = await queryBuilder.getRawOne();
+    const findCompany = await companyQueryBuilder.getRawOne();
 
     if (!findCompany) {
       throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
@@ -236,6 +240,70 @@ export class CompanyService {
       findCompany.logo = await this.storageService.getSignedUrl(
         findCompany.logo,
       );
+    }
+
+    const jobQueryBuilder = await this.jobRepository
+      .createQueryBuilder('job')
+      .leftJoin('job.company', 'company')
+      .leftJoin('job.jobSkills', 'jobSkill')
+      .leftJoin('jobSkill.skill', 'skill')
+      .leftJoin('company.industry', 'industry')
+      .select([
+        'job.id AS "id"',
+        'job.title AS "title"',
+        'job.slug AS "slug"',
+        'job.minSalary AS "minSalary"',
+        'job.maxSalary AS "maxSalary"',
+        'job.currencySalary AS "currencySalary"',
+        'job.level AS "level"',
+        'job.location AS "location"',
+        'job.workingModel AS "workingModel"',
+        'job.descriptions AS "descriptions"',
+        'job.requirement AS "requirement"',
+        'job.startDate AS "startDate"',
+        'job.endDate AS "endDate"',
+        'job.countView AS "countView"',
+        'job.quantity AS "quantity"',
+        'job.createdAt AS "createdAt"',
+        'job.updatedAt AS "updatedAt"',
+        'job.deletedAt AS "deletedAt"',
+        'job.status AS "status"',
+        `json_build_object(
+          'id', company.id,
+          'companyName', company.name,
+          'tagline', company.tagline,
+          'slug', company.slug,
+          'location', company.location,
+          'companyType', company.companyType,
+          'overtimePolicy', company.overtimePolicy,
+          'companySize', company.companySize,
+          'workingDay', company.workingDay,
+          'website', company.website,
+          'country', company.country,
+          'logo', company.logo,
+          'industry', json_build_object(
+            'id', industry.id,
+            'name_en', industry.name_en,
+            'name_vi', industry.name_vi
+          )
+        ) AS company`,
+        "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
+      ])
+      .where('company.id = :id', { id: findCompany.id })
+      .groupBy('job.id, company.id, industry.id');
+
+    const findJobs = await jobQueryBuilder.getRawMany();
+    findCompany.jobs = findJobs;
+
+    if (user) {
+      const findFollow = await this.companyFollowRepository.findOne({
+        where: {
+          userId: user.id,
+          companyId: findCompany.id,
+        },
+      });
+
+      findCompany['follow'] = !!findFollow;
     }
 
     return {
@@ -331,6 +399,36 @@ export class CompanyService {
     return {
       message: 'get all company successfully',
       result: newData,
+    };
+  }
+
+  async follow(id: number, user: User) {
+    const company = await this.companyRepository.findOneBy({ id });
+    if (!company) {
+      throw new HttpException('company not found', HttpStatus.NOT_FOUND);
+    }
+    const followed = await this.companyFollowRepository.findOneBy({
+      companyId: id,
+      userId: user.id,
+    });
+
+    if (followed) {
+      await this.companyFollowRepository.delete({
+        companyId: id,
+        userId: user.id,
+      });
+    } else {
+      await this.companyFollowRepository.save({
+        companyId: id,
+        userId: user.id,
+      });
+    }
+
+    return {
+      message: followed
+        ? 'unfollow company successfully'
+        : 'follow company successfully',
+      result: followed ? false : true,
     };
   }
 }

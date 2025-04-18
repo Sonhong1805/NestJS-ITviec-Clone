@@ -40,12 +40,6 @@ export class JobController {
   }
 
   @Public()
-  @Get('company/:param')
-  getJobsByCompany(@Param('param') param: string) {
-    return this.jobService.getJobsByCompany(param);
-  }
-
-  @Public()
   @Get('quantity')
   getQuantity() {
     return this.jobService.getQuantity();

@@ -5,11 +5,11 @@ import { JobRepository } from 'src/databases/repositories/job.repository';
 import { CompanyRepository } from 'src/databases/repositories/company.repository';
 import { JobSkillRepository } from 'src/databases/repositories/job-skill.repository';
 import { ResdisService } from '../redis/redis.service';
-import { JobViewRepository } from 'src/databases/repositories/job-view.repository';
 import { StorageService } from '../storage/storage.service';
 import { ApplicationRepository } from 'src/databases/repositories/application.repository';
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
 import { WishlistRepository } from 'src/databases/repositories/wishlist.repository';
+import { JobViewRepository } from 'src/databases/repositories/job-view.repository';
 
 @Module({
   controllers: [JobController],
@@ -18,8 +18,8 @@ import { WishlistRepository } from 'src/databases/repositories/wishlist.reposito
     JobRepository,
     CompanyRepository,
     JobSkillRepository,
-    ResdisService,
     JobViewRepository,
+    ResdisService,
     WishlistRepository,
     StorageService,
     ApplicationRepository,

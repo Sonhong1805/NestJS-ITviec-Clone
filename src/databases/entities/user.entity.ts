@@ -73,7 +73,7 @@ export class User {
   @OneToMany(() => CompanyReview, (companyReviews) => companyReviews.user)
   companyReviews: CompanyReview[];
 
-  @OneToMany(() => Wishlist, (wishlist) => wishlist.user)
+  @OneToMany(() => Wishlist, (wishlists) => wishlists.user)
   wishlists: Wishlist[];
 
   @OneToMany(() => JobView, (jobViews) => jobViews.user)

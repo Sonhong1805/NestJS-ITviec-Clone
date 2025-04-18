@@ -28,8 +28,11 @@ export class CompanyController {
 
   @Public()
   @Get(':param')
-  async getDetail(@Param('param') param: string | number) {
-    return this.companyService.getDetail(param);
+  async getDetail(
+    @Param('param') param: string | number,
+    @GetUser() user: User,
+  ) {
+    return this.companyService.getDetail(param, user);
   }
 
   @Public()
@@ -64,5 +67,11 @@ export class CompanyController {
     @Query() queries: CompanyReviewQueryDto,
   ) {
     return this.companyService.getReview(companyId, queries);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Post('follow/:id')
+  follow(@Param('id') id: number, @GetUser() user: User) {
+    return this.companyService.follow(id, user);
   }
 }
