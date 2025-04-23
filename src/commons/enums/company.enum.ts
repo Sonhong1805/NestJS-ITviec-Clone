@@ -44,3 +44,8 @@ export enum OVERTIME_POLICY {
   NO_OT = 'No OT',
   EXTRA_OT = 'Extra salary for OT',
 }
+
+export enum OVERTIME_POLICY_SATISFACTION {
+  SATISFIED = 'satisfied',
+  UNSATISFIED = 'unsatisfied',
+}

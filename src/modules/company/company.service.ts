@@ -21,6 +21,7 @@ import { CompanySkillRepository } from 'src/databases/repositories/company-skill
 import { Skill } from 'src/databases/entities/skill.entity';
 import { CompanyFollowRepository } from 'src/databases/repositories/company-follow.repository';
 import { JobRepository } from 'src/databases/repositories/job.repository';
+import { CompanyQueriesDto } from './dto/company-queries.dto';
 
 @Injectable()
 export class CompanyService {
@@ -304,6 +305,15 @@ export class CompanyService {
       });
 
       findCompany['follow'] = !!findFollow;
+
+      const findReview = await this.companyReviewRepository.findOne({
+        where: {
+          userId: user.id,
+          companyId: findCompany.id,
+        },
+      });
+
+      findCompany['review'] = !!findReview;
     }
 
     return {
@@ -312,9 +322,15 @@ export class CompanyService {
     };
   }
 
-  async createReview(body: ReviewCompanyDto, user: User) {
+  async createReview(id: number, body: ReviewCompanyDto, user: User) {
+    const company = await this.companyRepository.findOneBy({ id });
+    if (!company) {
+      throw new HttpException('company not found', HttpStatus.NOT_FOUND);
+    }
+
     const companyReview = await this.companyReviewRepository.save({
       ...body,
+      companyId: id,
       userId: user.id,
     });
 
@@ -324,15 +340,15 @@ export class CompanyService {
     };
   }
 
-  async getReview(companyId: number, queries: CompanyReviewQueryDto) {
+  async getReview(id: number, queries: CompanyReviewQueryDto) {
     const { limit, cursor } = queries;
-    const total = await this.companyReviewRepository.count({
-      where: { companyId },
+    const totalItems = await this.companyReviewRepository.count({
+      where: { companyId: id },
     });
 
     const queryBuilder = await this.companyReviewRepository
       .createQueryBuilder('review')
-      .where('review.companyId = :companyId', { companyId })
+      .where('review.companyId = :companyId', { companyId: id })
       .orderBy('review.createdAt', 'DESC')
       .take(limit + 1);
 
@@ -346,7 +362,7 @@ export class CompanyService {
     let next = null;
     if (hasNextPage) {
       results.pop();
-      next = results[length - 1].id;
+      next = results[results.length - 1].id;
     }
 
     return {
@@ -356,13 +372,14 @@ export class CompanyService {
         pagination: {
           limit,
           next,
-          total,
+          totalItems,
         },
       },
     };
   }
 
-  async getAll() {
+  async getAll(queries: CompanyQueriesDto) {
+    const { name } = queries;
     const queryBuilder = await this.companyRepository
       .createQueryBuilder('company')
       .leftJoin('company.companySkills', 'companySkill')
@@ -378,6 +395,15 @@ export class CompanyService {
         "jsonb_agg(DISTINCT jsonb_build_object('id',job.id,'title', job.title)) AS jobs",
       ])
       .groupBy('company.id');
+    if (name) {
+      queryBuilder
+        .andWhere('company.name ILIKE :name', {
+          name: `%${name}%`,
+        })
+        .orWhere('company.slug ILIKE :name', {
+          name: `%${name}%`,
+        });
+    }
     const data = await queryBuilder.getRawMany();
     const newData = await Promise.all(
       data.map(async (item) => {

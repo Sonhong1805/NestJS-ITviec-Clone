@@ -20,6 +20,7 @@ import { ReviewCompanyDto } from './dto/review-company.dto';
 import { Public } from 'src/commons/decorators/public.decorator';
 import { CompanyReviewQueryDto } from './dto/company-review-query.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { CompanyQueriesDto } from './dto/company-queries.dto';
 
 @ApiBearerAuth()
 @Controller('company')
@@ -37,8 +38,8 @@ export class CompanyController {
 
   @Public()
   @Get('')
-  async getAll() {
-    return this.companyService.getAll();
+  async getAll(@Query() queries: CompanyQueriesDto) {
+    return this.companyService.getAll(queries);
   }
 
   @Roles(ROLE.COMPANY)
@@ -55,18 +56,19 @@ export class CompanyController {
   }
 
   @Roles(ROLE.APPLICANT)
-  @Post(':id')
-  createReview(@Body() body: ReviewCompanyDto, @GetUser() user: User) {
-    return this.companyService.createReview(body, user);
+  @Post('review/:id')
+  createReview(
+    @Param('id') id: number,
+    @Body() body: ReviewCompanyDto,
+    @GetUser() user: User,
+  ) {
+    return this.companyService.createReview(id, body, user);
   }
 
   @Public()
-  @Get('review/:companyId')
-  getReview(
-    @Param('companyId') companyId: number,
-    @Query() queries: CompanyReviewQueryDto,
-  ) {
-    return this.companyService.getReview(companyId, queries);
+  @Get('review/:id')
+  getReview(@Param('id') id: number, @Query() queries: CompanyReviewQueryDto) {
+    return this.companyService.getReview(id, queries);
   }
 
   @Roles(ROLE.APPLICANT)
