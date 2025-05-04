@@ -15,6 +15,7 @@ import { Application } from 'src/databases/entities/application.entity';
 import { Applicant } from 'src/databases/entities/applicant.entity';
 import { ApplicantLocation } from 'src/databases/entities/applicant-location.entity';
 import { ApplicantLocationRepository } from 'src/databases/repositories/applicant-location.repository';
+import { validateCVFile } from 'src/commons/utils/validateCVFile';
 
 @Injectable()
 export class ApplicationService {
@@ -43,53 +44,35 @@ export class ApplicationService {
       throw new HttpException('Job not found', HttpStatus.NOT_FOUND);
     }
 
-    const findAppicant = await this.applicantRepository.findOne({
+    const findApplicant = await this.applicantRepository.findOne({
       where: {
         userId: user.id,
       },
     });
 
-    const findAppication = await this.applicationRepository.findOne({
+    const findApplication = await this.applicationRepository.findOne({
       where: {
         jobId: findJob.id,
-        applicantId: findAppicant.id,
+        applicantId: findApplicant.id,
       },
     });
 
-    if (findAppication) {
+    if (findApplication) {
       throw new HttpException('You already applied', HttpStatus.CONFLICT);
     }
 
-    let cv = findAppicant.cv;
+    let cv = findApplicant.cv;
     if (file) {
-      await this.storageService.deleteFile(findAppicant.cv);
+      await this.storageService.deleteFile(findApplicant.cv);
 
-      const [_, fileType] = file.originalname.split('.');
-      const validFileType = ['pdf', 'docx', 'doc'];
-      const validContentTypes: Record<string, string> = {
-        pdf: 'application/pdf',
-        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        doc: 'application/msword',
-      };
-
-      if (!validFileType.includes(fileType)) {
-        throw new BadRequestException(
-          'Invalid mine type. only pdf, doc, docx file are allowed',
-        );
-      }
-
-      const maxSizeBytes = 3 * 1024 * 1024;
-      if (file.size > maxSizeBytes) {
-        throw new BadRequestException('File size exceeds the 3MB');
-      }
-
+      const { contentType } = validateCVFile(file);
       const filePath = `/cvs/${Date.now()}/${file.originalname}`;
       const uploadResult = await this.storageService.uploadFile(
         filePath,
         file.buffer,
         {
           upsert: true,
-          contentType: validContentTypes[fileType],
+          contentType,
         },
       );
       cv = (await uploadResult).path;
@@ -102,7 +85,7 @@ export class ApplicationService {
       await queryRunner.startTransaction();
       const newApplication = await queryRunner.manager.save(Application, {
         jobId: findJob.id,
-        applicantId: findAppicant.id,
+        applicantId: findApplicant.id,
         fullName,
         coverLetter,
       });
@@ -110,19 +93,19 @@ export class ApplicationService {
       delete body.locations;
 
       const applicantLocations = locations.map((location) => ({
-        applicantId: findAppicant.id,
+        applicantId: findApplicant.id,
         location,
       }));
 
       await this.applicantLocationRepository.delete({
-        applicantId: findAppicant.id,
+        applicantId: findApplicant.id,
       });
 
       await queryRunner.manager.save(ApplicantLocation, applicantLocations);
 
       await queryRunner.manager.update(
         Applicant,
-        { id: findAppicant.id },
+        { id: findApplicant.id },
         {
           cv,
         },

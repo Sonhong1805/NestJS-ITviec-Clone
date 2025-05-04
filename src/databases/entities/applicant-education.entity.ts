@@ -21,17 +21,23 @@ export class ApplicantEducation extends BaseEntity {
   @Column('character varying', { name: 'major', nullable: true })
   major: string | null;
 
-  @Column('character varying', { name: 'description', nullable: true })
-  description: string | null;
-
   @Column('boolean', { name: 'is_current_study', nullable: true })
   isCurrentStudy: boolean | null;
 
-  @Column('timestamp without time zone', { name: 'start_date', nullable: true })
-  startDate: Date | null;
+  @Column('integer', { name: 'from_month', nullable: true })
+  fromMonth: string | null;
 
-  @Column('timestamp without time zone', { name: 'end_date', nullable: true })
-  endDate: Date | null;
+  @Column('integer', { name: 'from_year', nullable: true })
+  fromYear: string | null;
+
+  @Column('integer', { name: 'to_month', nullable: true })
+  toMonth: string | null;
+
+  @Column('integer', { name: 'to_year', nullable: true })
+  toYear: string | null;
+
+  @Column('character varying', { name: 'additional_details', nullable: true })
+  additionalDetails: string | null;
 
   @Column({ type: 'integer', name: 'applicant_id' })
   applicantId: number;

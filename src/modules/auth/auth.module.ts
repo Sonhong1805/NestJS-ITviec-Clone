@@ -8,6 +8,7 @@ import { CompanyRepository } from 'src/databases/repositories/company.repository
 import { MailModule } from '../mail/mail.module';
 import { MailService } from '../mail/mail.service';
 import { BullModule } from '@nestjs/bullmq';
+import { StorageService } from '../storage/storage.service';
 
 @Module({
   imports: [MailModule, BullModule],
@@ -19,6 +20,7 @@ import { BullModule } from '@nestjs/bullmq';
     JwtService,
     CompanyRepository,
     MailService,
+    StorageService,
   ],
   exports: [BullModule],
 })

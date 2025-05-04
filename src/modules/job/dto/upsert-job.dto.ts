@@ -37,7 +37,7 @@ export class UpsertJobDto {
   @ApiProperty()
   @IsString()
   @IsOptional()
-  descriptions: string;
+  description: string;
 
   @ApiProperty()
   @IsString()

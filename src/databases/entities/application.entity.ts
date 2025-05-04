@@ -20,7 +20,7 @@ export class Application extends BaseEntity {
   @Column('character varying', { name: 'full_name', nullable: true })
   fullName: string | null;
 
-  @Column('character varying', { name: 'cover_letter', nullable: true })
+  @Column('text', { name: 'cover_letter', nullable: true })
   coverLetter: string | null;
 
   @Column('character varying', { name: 'status', nullable: true })

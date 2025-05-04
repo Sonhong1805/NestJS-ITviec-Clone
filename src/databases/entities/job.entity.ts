@@ -26,10 +26,10 @@ export class Job extends BaseEntity {
   @Column('character varying', { name: 'slug', nullable: true })
   slug: string | null;
 
-  @Column('character varying', { name: 'descriptions', nullable: true })
-  descriptions: string | null;
+  @Column('text', { name: 'description', nullable: true })
+  description: string | null;
 
-  @Column('character varying', { name: 'requirement', nullable: true })
+  @Column('text', { name: 'requirement', nullable: true })
   requirement: string | null;
 
   @Column('integer', { name: 'quantity', nullable: true })

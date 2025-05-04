@@ -5,6 +5,12 @@ export enum APPLICANT_LEVEL {
   MANAGER = 'Manager',
 }
 
+export enum SKILL_LEVEL {
+  EXCELLENT = 'Excellent',
+  INTERMEDIAT = 'Intermediate',
+  BEGINNER = 'Beginner',
+}
+
 export enum WORKING_MODEL {
   AT_OFFICE = 'At office',
   REMOTE = 'Remote',

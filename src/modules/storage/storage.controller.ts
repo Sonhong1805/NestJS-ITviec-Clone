@@ -12,6 +12,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { UploadFileDto } from './dto/upload-file.dto';
+import { validateCVFile } from 'src/commons/utils/validateCVFile';
 
 @Controller('storage')
 export class StorageController {
@@ -54,35 +55,18 @@ export class StorageController {
   @UseInterceptors(FileInterceptor('file'))
   @ApiBody({ type: UploadFileDto })
   async uploadCV(@UploadedFile() file: Express.Multer.File) {
-    const [_, fileType] = file.originalname.split('.');
-    const validFileType = ['pdf', 'docx', 'doc'];
-    const validContentTypes: Record<string, string> = {
-      pdf: 'application/pdf',
-      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      doc: 'application/msword',
-    };
-
-    if (!validFileType.includes(fileType)) {
-      throw new BadRequestException(
-        'Invalid mine type. only pdf, doc, docx file are allowed',
-      );
-    }
-
-    const maxSizeBytes = 3 * 1024 * 1024;
-    if (file.size > maxSizeBytes) {
-      throw new BadRequestException('File size exceeds the 3MB');
-    }
+    const { contentType } = validateCVFile(file);
 
     const filePath = `/cvs/${Date.now()}/${file.originalname}`;
     const uploadResult = this.storageService.uploadFile(filePath, file.buffer, {
       upsert: true,
-      contentType: validContentTypes[fileType],
+      contentType,
     });
     const publicUrl = await this.storageService.getSignedUrl(
       (await uploadResult).path,
     );
     return {
-      message: 'CV uploaded successfully',
+      message: 'Uploaded successfully',
       result: {
         publicUrl,
         path: (await uploadResult).path,

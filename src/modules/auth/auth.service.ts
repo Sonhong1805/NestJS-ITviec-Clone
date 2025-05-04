@@ -26,6 +26,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { randomPassword } from 'src/commons/utils/random';
 import { convertToSlug } from 'src/commons/utils/convertToSlug';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class AuthService {
@@ -35,6 +36,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
+    private readonly storageService: StorageService,
+
     @InjectQueue('mail-queue') private mailQueue: Queue,
   ) {}
 
@@ -103,6 +106,7 @@ export class AuthService {
       phoneNumber,
       loginType,
       role,
+      email,
       createdAt,
       updatedAt,
       deletedAt,
@@ -124,6 +128,17 @@ export class AuthService {
       maxAge: ms(this.configService.get('jwt').refreshTokenExpires),
     });
 
+    const findApplicant = await this.applicantRepository.findOneBy({
+      userId: id,
+    });
+
+    payload['avatar'] = '';
+    if (findApplicant.avatar) {
+      payload['avatar'] = await this.storageService.getSignedUrl(
+        findApplicant.avatar,
+      );
+    }
+
     return {
       message: 'Login successfully',
       result: {
@@ -142,6 +157,16 @@ export class AuthService {
 
     delete userInfo.password;
     delete userInfo.refreshToken;
+
+    const findApplicant = await this.applicantRepository.findOneBy({
+      userId: user.id,
+    });
+    userInfo['avatar'] = '';
+    if (findApplicant.avatar) {
+      userInfo['avatar'] = await this.storageService.getSignedUrl(
+        findApplicant.avatar,
+      );
+    }
 
     return {
       message: 'get user info successfully',
@@ -194,6 +219,17 @@ export class AuthService {
         },
       );
 
+      const findApplicant = await this.applicantRepository.findOneBy({
+        userId: id,
+      });
+
+      payload['avatar'] = '';
+      if (findApplicant.avatar) {
+        payload['avatar'] = await this.storageService.getSignedUrl(
+          findApplicant.avatar,
+        );
+      }
+
       response.cookie('refresh_token', newRefreshToken, {
         httpOnly: true,
         maxAge: ms(this.configService.get('jwt').refreshTokenExpires),
@@ -238,7 +274,9 @@ export class AuthService {
       audience: ggClientId,
     });
 
-    const { email_verified, email, name } = (await ggLoginTicket).getPayload();
+    const { email_verified, email, name, picture } = (
+      await ggLoginTicket
+    ).getPayload();
     if (!email_verified) {
       throw new HttpException(
         'Email is not verified' + email,
@@ -267,6 +305,7 @@ export class AuthService {
       });
       await this.applicantRepository.save({
         userId: findUser.id,
+        avatar: picture,
       });
     }
 
@@ -306,6 +345,9 @@ export class AuthService {
       httpOnly: true,
       maxAge: ms(this.configService.get('jwt').refreshTokenExpires),
     });
+
+    payload['avatar'] = picture || '';
+
     return {
       message: 'Login with google successfully',
       result: {

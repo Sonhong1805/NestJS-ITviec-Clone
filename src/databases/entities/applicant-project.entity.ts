@@ -9,23 +9,18 @@ import {
 import { Applicant } from './applicant.entity';
 import { BaseEntity } from './base.entity';
 
-@Index('applicant_experiences_pkey', ['id'], { unique: true })
-@Entity('applicant_experiences', { schema: 'public' })
-export class ApplicantExperience extends BaseEntity {
+@Index('applicant_projects_pkey', ['id'], { unique: true })
+@Index('applicant_projects_applicant_id_fkey', ['applicantId'])
+@Entity('applicant_projects', { schema: 'public' })
+export class ApplicantProject extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
 
-  @Column({ type: 'integer', name: 'applicant_id' })
-  applicantId: number;
+  @Column('character varying', { name: 'name', nullable: true })
+  name: string | null;
 
-  @Column('character varying', { name: 'job_title', nullable: true })
-  jobTitle: string | null;
-
-  @Column('character varying', { name: 'company_name', nullable: true })
-  companyName: string | null;
-
-  @Column('boolean', { name: 'is_working_here', nullable: true })
-  isWorkingHere: boolean | null;
+  @Column('boolean', { name: 'is_working_on_project', nullable: true })
+  isWorkingOnProject: boolean | null;
 
   @Column('integer', { name: 'from_month', nullable: true })
   fromMonth: string | null;
@@ -42,10 +37,13 @@ export class ApplicantExperience extends BaseEntity {
   @Column('text', { name: 'description', nullable: true })
   description: string | null;
 
-  @Column('text', { name: 'project', nullable: true })
-  project: string | null;
+  @Column('character varying', { name: 'url', nullable: true })
+  url: string | null;
 
-  @ManyToOne(() => Applicant, (applicants) => applicants.applicantExperiences)
+  @Column({ type: 'integer', name: 'applicant_id' })
+  applicantId: number;
+
+  @ManyToOne(() => Applicant, (applicants) => applicants.applicantProjects)
   @JoinColumn([{ name: 'applicant_id', referencedColumnName: 'id' }])
   applicant: Applicant;
 }

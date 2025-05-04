@@ -17,6 +17,11 @@ import { CompanySkill } from './entities/company-skill.entity';
 import { Job } from './entities/job.entity';
 import { ApplicantLocation } from './entities/applicant-location.entity';
 import { Wishlist } from './entities/wishlist.entity';
+import { ApplicantWorkingModel } from './entities/applicant-working-model';
+import { ApplicantIndustry } from './entities/applicant-industry.entity';
+import { ApplicantProject } from './entities/applicant-project.entity';
+import { ApplicantCertificate } from './entities/applicant-certificate.entity';
+import { ApplicantAward } from './entities/applicant-award.entity';
 
 @Global()
 @Module({
@@ -39,6 +44,11 @@ import { Wishlist } from './entities/wishlist.entity';
       ApplicantSkill,
       Application,
       ApplicantLocation,
+      ApplicantWorkingModel,
+      ApplicantIndustry,
+      ApplicantProject,
+      ApplicantCertificate,
+      ApplicantAward,
     ]),
   ],
   exports: [TypeOrmModule],
