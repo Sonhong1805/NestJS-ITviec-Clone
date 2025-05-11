@@ -26,17 +26,20 @@ export class Job extends BaseEntity {
   @Column('character varying', { name: 'slug', nullable: true })
   slug: string | null;
 
+  @Column('character varying', { name: 'label', nullable: true })
+  label: string | null;
+
+  @Column('character varying', { name: 'address', nullable: true })
+  address: string | null;
+
   @Column('text', { name: 'description', nullable: true })
   description: string | null;
 
   @Column('text', { name: 'requirement', nullable: true })
   requirement: string | null;
 
-  @Column('integer', { name: 'quantity', nullable: true })
-  quantity: number | null;
-
-  @Column('character varying', { name: 'status', nullable: true })
-  status: string | null;
+  @Column('text', { name: 'reason', nullable: true })
+  reason: string | null;
 
   @Column('character varying', { name: 'location', nullable: true })
   location: string | null;
@@ -61,9 +64,6 @@ export class Job extends BaseEntity {
 
   @Column('timestamp without time zone', { name: 'end_date', nullable: true })
   endDate: Date | null;
-
-  @Column('integer', { name: 'count_view', nullable: true })
-  countView: number | null;
 
   @Column('integer', { name: 'company_id', nullable: true, unique: true })
   companyId: number | null;

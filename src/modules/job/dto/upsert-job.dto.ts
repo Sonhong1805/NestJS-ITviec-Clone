@@ -12,6 +12,7 @@ import { COMPANY_ADDRESS } from 'src/commons/enums/company.enum';
 import {
   APPLICANT_LEVEL,
   CURRENCY_SALARY,
+  JOB_LABEL,
   WORKING_MODEL,
 } from 'src/commons/enums/job.enum';
 
@@ -27,11 +28,19 @@ export class UpsertJobDto {
   slug: string;
 
   @ApiProperty({
+    example: JOB_LABEL.HOT,
+    enum: JOB_LABEL,
+  })
+  // @IsEnum(JOB_LABEL)
+  @IsOptional()
+  label: JOB_LABEL;
+
+  @ApiProperty({
     example: WORKING_MODEL.AT_OFFICE,
     enum: WORKING_MODEL,
   })
   @IsEnum(WORKING_MODEL)
-  @IsOptional()
+  @IsNotEmpty()
   workingModel: WORKING_MODEL;
 
   @ApiProperty()
@@ -47,14 +56,19 @@ export class UpsertJobDto {
   @ApiProperty()
   @IsString()
   @IsOptional()
-  status: string;
+  address: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  reason: string;
 
   @ApiProperty({
     example: COMPANY_ADDRESS.HA_NOI,
     enum: COMPANY_ADDRESS,
   })
   @IsEnum(COMPANY_ADDRESS)
-  @IsOptional()
+  @IsNotEmpty()
   location: COMPANY_ADDRESS;
 
   @ApiProperty({
@@ -62,7 +76,7 @@ export class UpsertJobDto {
     enum: APPLICANT_LEVEL,
   })
   @IsEnum(APPLICANT_LEVEL)
-  @IsOptional()
+  @IsNotEmpty()
   level: APPLICANT_LEVEL;
 
   @ApiProperty()
@@ -72,17 +86,12 @@ export class UpsertJobDto {
 
   @ApiProperty()
   @IsNumber()
-  @IsOptional()
-  quantity: number;
-
-  @ApiProperty()
-  @IsNumber()
-  @IsOptional()
+  @IsNotEmpty()
   minSalary: number;
 
   @ApiProperty()
   @IsNumber()
-  @IsOptional()
+  @IsNotEmpty()
   maxSalary: number;
 
   @ApiProperty({
@@ -93,15 +102,27 @@ export class UpsertJobDto {
   @IsOptional()
   currencySalary: CURRENCY_SALARY;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date', required: false })
   @IsDate()
-  @IsOptional()
-  @Transform(({ value }) => new Date(value))
+  @IsNotEmpty()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const [year, month, day] = value.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    return value instanceof Date ? value : new Date(value);
+  })
   startDate: Date;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date', required: false })
   @IsDate()
-  @IsOptional()
-  @Transform(({ value }) => new Date(value))
+  @IsNotEmpty()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const [year, month, day] = value.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    return value instanceof Date ? value : new Date(value);
+  })
   endDate: Date;
 }

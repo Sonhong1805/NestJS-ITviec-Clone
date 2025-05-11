@@ -18,6 +18,7 @@ import { Skill } from 'src/databases/entities/skill.entity';
 import { ApplicationRepository } from 'src/databases/repositories/application.repository';
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
 import { WishlistRepository } from 'src/databases/repositories/wishlist.repository';
+import { SkillRepository } from 'src/databases/repositories/skill.repository';
 
 @Injectable()
 export class JobService {
@@ -32,6 +33,7 @@ export class JobService {
     private readonly storageService: StorageService,
     private readonly applicationRepository: ApplicationRepository,
     private readonly applicantRepository: ApplicantRepository,
+    private readonly skillRepository: SkillRepository,
   ) {}
 
   async create(body: UpsertJobDto, user: User) {
@@ -69,11 +71,21 @@ export class JobService {
       }));
 
       await queryRunner.manager.save(JobSkill, jobSkills);
+
+      const skills = await queryRunner.manager.find(Skill, {
+        where: {
+          id: In(skillIds),
+        },
+      });
       await queryRunner.commitTransaction();
 
+      const orderedSkills = skillIds
+        .map((id) => skills.find((skill) => skill.id === id))
+        .filter(Boolean);
+
       return {
-        message: 'Create job successfully',
-        result: updatedSlug,
+        message: 'Created job successfully',
+        result: { ...updatedSlug, skills: orderedSkills },
       };
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -129,9 +141,18 @@ export class JobService {
 
     await this.jobSkillRepository.save(jobSkills);
 
+    const skills = await this.skillRepository.find({
+      where: {
+        id: In(skillIds),
+      },
+      select: { id: true, name: true },
+    });
+    const orderedSkills = skillIds
+      .map((id) => skills.find((skill) => skill.id === id))
+      .filter(Boolean);
     return {
-      message: 'update job successfully',
-      result: updatedjob,
+      message: 'Updated job successfully',
+      result: { ...updatedjob, skills: orderedSkills },
     };
   }
 
@@ -145,6 +166,7 @@ export class JobService {
       .select([
         'job.id AS "id"',
         'job.title AS "title"',
+        'job.label AS "label"',
         'job.slug AS "slug"',
         'job.minSalary AS "minSalary"',
         'job.maxSalary AS "maxSalary"',
@@ -154,14 +176,13 @@ export class JobService {
         'job.workingModel AS "workingModel"',
         'job.description AS "description"',
         'job.requirement AS "requirement"',
+        'job.address AS "address"',
+        'job.reason AS "reason"',
         'job.startDate AS "startDate"',
         'job.endDate AS "endDate"',
-        'job.countView AS "countView"',
-        'job.quantity AS "quantity"',
         'job.createdAt AS "createdAt"',
         'job.updatedAt AS "updatedAt"',
         'job.deletedAt AS "deletedAt"',
-        'job.status AS "status"',
         `json_build_object(
           'id', company.id,
           'companyName', company.name,
@@ -322,6 +343,7 @@ export class JobService {
       .select([
         'job.id AS "id"',
         'job.title AS "title"',
+        'job.label AS "label"',
         'job.slug AS "slug"',
         'job.minSalary AS "minSalary"',
         'job.maxSalary AS "maxSalary"',
@@ -331,17 +353,17 @@ export class JobService {
         'job.workingModel AS "workingModel"',
         'job.description AS "description"',
         'job.requirement AS "requirement"',
+        'job.address AS "address"',
+        'job.reason AS "reason"',
         'job.startDate AS "startDate"',
         'job.endDate AS "endDate"',
-        'job.countView AS "countView"',
-        'job.quantity AS "quantity"',
         'job.createdAt AS "createdAt"',
         'job.updatedAt AS "updatedAt"',
         'job.deletedAt AS "deletedAt"',
-        'job.status AS "status"',
         `json_build_object(
           'id', company.id,
           'slug', company.slug,
+          'tagline', company.tagline,
           'location', company.location,
           'workingDay', company.workingDay,
           'companyType', company.companyType,
@@ -359,6 +381,8 @@ export class JobService {
         ) AS company`,
         "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
       ])
+      .where('job.startDate <= :now', { now: new Date() })
+      .andWhere('job.endDate >= :now', { now: new Date() })
       .groupBy('job.id, company.id, industry.id');
 
     if (keyword) {
@@ -517,10 +541,14 @@ export class JobService {
 
     await this.jobRepository.softDelete(id);
 
-    await this.resdisService.setKey('manu' + id, '');
+    const deletedJob = await this.jobRepository.findOne({
+      where: { id },
+      withDeleted: true,
+    });
 
     return {
-      message: 'Delete job successfully',
+      message: 'Deleted job successfully',
+      result: deletedJob.deletedAt,
     };
   }
 

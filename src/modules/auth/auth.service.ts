@@ -128,16 +128,16 @@ export class AuthService {
       maxAge: ms(this.configService.get('jwt').refreshTokenExpires),
     });
 
-    const findApplicant = await this.applicantRepository.findOneBy({
-      userId: id,
-    });
+    // const findApplicant = await this.applicantRepository.findOneBy({
+    //   userId: id,
+    // });
 
-    payload['avatar'] = '';
-    if (findApplicant.avatar) {
-      payload['avatar'] = await this.storageService.getSignedUrl(
-        findApplicant.avatar,
-      );
-    }
+    // payload['avatar'] = '';
+    // if (findApplicant.avatar) {
+    //   payload['avatar'] = await this.storageService.getSignedUrl(
+    //     findApplicant.avatar,
+    //   );
+    // }
 
     return {
       message: 'Login successfully',
@@ -158,15 +158,16 @@ export class AuthService {
     delete userInfo.password;
     delete userInfo.refreshToken;
 
-    const findApplicant = await this.applicantRepository.findOneBy({
-      userId: user.id,
-    });
-    userInfo['avatar'] = '';
-    if (findApplicant.avatar) {
-      userInfo['avatar'] = await this.storageService.getSignedUrl(
-        findApplicant.avatar,
-      );
-    }
+    // const findApplicant = await this.applicantRepository.findOneBy({
+    //   userId: user.id,
+    // });
+
+    // userInfo['avatar'] = '';
+    // if (findApplicant.avatar) {
+    //   userInfo['avatar'] = await this.storageService.getSignedUrl(
+    //     findApplicant.avatar,
+    //   );
+    // }
 
     return {
       message: 'get user info successfully',
@@ -219,16 +220,16 @@ export class AuthService {
         },
       );
 
-      const findApplicant = await this.applicantRepository.findOneBy({
-        userId: id,
-      });
+      // const findApplicant = await this.applicantRepository.findOneBy({
+      //   userId: id,
+      // });
 
-      payload['avatar'] = '';
-      if (findApplicant.avatar) {
-        payload['avatar'] = await this.storageService.getSignedUrl(
-          findApplicant.avatar,
-        );
-      }
+      // payload['avatar'] = '';
+      // if (findApplicant.avatar) {
+      //   payload['avatar'] = await this.storageService.getSignedUrl(
+      //     findApplicant.avatar,
+      //   );
+      // }
 
       response.cookie('refresh_token', newRefreshToken, {
         httpOnly: true,

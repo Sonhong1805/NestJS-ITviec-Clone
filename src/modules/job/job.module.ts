@@ -10,6 +10,7 @@ import { ApplicationRepository } from 'src/databases/repositories/application.re
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
 import { WishlistRepository } from 'src/databases/repositories/wishlist.repository';
 import { JobViewRepository } from 'src/databases/repositories/job-view.repository';
+import { SkillRepository } from 'src/databases/repositories/skill.repository';
 
 @Module({
   controllers: [JobController],
@@ -24,6 +25,7 @@ import { JobViewRepository } from 'src/databases/repositories/job-view.repositor
     StorageService,
     ApplicationRepository,
     ApplicantRepository,
+    SkillRepository,
   ],
 })
 export class JobModule {}

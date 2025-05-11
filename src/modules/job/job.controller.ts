@@ -69,12 +69,6 @@ export class JobController {
     return this.jobService.getAllByViewed(queries, user);
   }
 
-  // @Roles(ROLE.APPLICANT)
-  // @Get('favorite')
-  // getAllByFavorite(@Query() queries: CommonQueryDto, @GetUser() user: User) {
-  //   return this.jobService.getAllByFavorite(queries, user);
-  // }
-
   @Roles(ROLE.APPLICANT)
   @Post('wishlist/:id')
   wishlist(@Param('id') id: number, @GetUser() user: User) {

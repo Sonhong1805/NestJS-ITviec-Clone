@@ -22,6 +22,8 @@ import { Skill } from 'src/databases/entities/skill.entity';
 import { CompanyFollowRepository } from 'src/databases/repositories/company-follow.repository';
 import { JobRepository } from 'src/databases/repositories/job.repository';
 import { CompanyQueriesDto } from './dto/company-queries.dto';
+import { JobQueriesDto } from './dto/job-queries.dto';
+import { convertKeySortJob } from 'src/commons/utils/helper';
 
 @Injectable()
 export class CompanyService {
@@ -60,6 +62,7 @@ export class CompanyService {
       workingDay,
       position,
       skillIds,
+      tagline,
     } = body;
     let slug = body.slug;
 
@@ -143,6 +146,7 @@ export class CompanyService {
           overview,
           perks,
           website,
+          tagline,
         },
       );
 
@@ -204,6 +208,7 @@ export class CompanyService {
         'company.id as "id"',
         'company.name as "companyName"',
         'company.slug as "slug"',
+        'company.tagline as "tagline"',
         'company.website as "website"',
         'company.overview as "overview"',
         'company.perks as "perks"',
@@ -252,6 +257,7 @@ export class CompanyService {
       .select([
         'job.id AS "id"',
         'job.title AS "title"',
+        'job.label AS "label"',
         'job.slug AS "slug"',
         'job.minSalary AS "minSalary"',
         'job.maxSalary AS "maxSalary"',
@@ -259,16 +265,15 @@ export class CompanyService {
         'job.level AS "level"',
         'job.location AS "location"',
         'job.workingModel AS "workingModel"',
-        'job.descriptions AS "descriptions"',
+        'job.description AS "description"',
         'job.requirement AS "requirement"',
+        'job.address AS "address"',
+        'job.reason AS "reason"',
         'job.startDate AS "startDate"',
         'job.endDate AS "endDate"',
-        'job.countView AS "countView"',
-        'job.quantity AS "quantity"',
         'job.createdAt AS "createdAt"',
         'job.updatedAt AS "updatedAt"',
         'job.deletedAt AS "deletedAt"',
-        'job.status AS "status"',
         `json_build_object(
           'id', company.id,
           'companyName', company.name,
@@ -340,7 +345,7 @@ export class CompanyService {
     };
   }
 
-  async getReview(id: number, queries: CompanyReviewQueryDto) {
+  async getReviews(id: number, queries: CompanyReviewQueryDto) {
     const { limit, cursor } = queries;
     const totalItems = await this.companyReviewRepository.count({
       where: { companyId: id },
@@ -455,6 +460,156 @@ export class CompanyService {
         ? 'unfollow company successfully'
         : 'follow company successfully',
       result: followed ? false : true,
+    };
+  }
+
+  async getJobs(queries: JobQueriesDto, user: User) {
+    const {
+      page,
+      limit,
+      keyword,
+      city,
+      companyTypes,
+      levels,
+      industryIds,
+      minSalary,
+      maxSalary,
+      workingModels,
+      sort,
+      industries,
+    } = queries;
+    console.log(queries);
+
+    const findCompany = await this.companyRepository.findOneBy({
+      userId: user.id,
+    });
+    if (!findCompany) {
+      throw new HttpException('company not found', HttpStatus.NOT_FOUND);
+    }
+
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.jobRepository
+      .createQueryBuilder('job')
+      .withDeleted()
+      .leftJoin('job.company', 'company')
+      .leftJoin('job.jobSkills', 'jobSkill')
+      .leftJoin('jobSkill.skill', 'skill')
+      .leftJoin('company.industry', 'industry')
+      .select([
+        'job.id AS "id"',
+        'job.title AS "title"',
+        'job.label AS "label"',
+        'job.slug AS "slug"',
+        'job.minSalary AS "minSalary"',
+        'job.maxSalary AS "maxSalary"',
+        'job.currencySalary AS "currencySalary"',
+        'job.level AS "level"',
+        'job.location AS "location"',
+        'job.workingModel AS "workingModel"',
+        'job.description AS "description"',
+        'job.requirement AS "requirement"',
+        'job.address AS "address"',
+        'job.reason AS "reason"',
+        'job.startDate AS "startDate"',
+        'job.endDate AS "endDate"',
+        'job.createdAt AS "createdAt"',
+        'job.updatedAt AS "updatedAt"',
+        'job.deletedAt AS "deletedAt"',
+        "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
+      ])
+      .where('job.companyId = :companyId', { companyId: findCompany.id })
+      .groupBy('job.id, company.id, industry.id');
+
+    if (keyword) {
+      queryBuilder
+        .andWhere(
+          `EXISTS (
+            SELECT 1 FROM job_skills
+            JOIN skills ON job_skills.skill_id = skills.id
+            WHERE job_skills.job_id = job.id
+            AND skills.name ILIKE :keyword
+          )`,
+          { keyword: `%${keyword}%` },
+        )
+        .orWhere('job.title ILIKE :keyword', {
+          keyword: `%${keyword}%`,
+        })
+        .orWhere('job.slug ILIKE :keyword', {
+          keyword: `%${keyword}%`,
+        })
+        .orWhere('company.name ILIKE :keyword', {
+          keyword: `%${keyword}%`,
+        });
+    }
+    if (sort) {
+      const order = convertKeySortJob(sort);
+
+      for (const key of Object.keys(order)) {
+        queryBuilder.addOrderBy(key, order[key]);
+      }
+    } else {
+      queryBuilder.addOrderBy('job.createdAt', 'DESC');
+    }
+    if (city) {
+      queryBuilder.andWhere('job.location = :city', {
+        city,
+      });
+    }
+    if (companyTypes) {
+      queryBuilder.andWhere('company.companyType IN (:...types)', {
+        types: companyTypes,
+      });
+    }
+    if (levels) {
+      queryBuilder.andWhere('job.level IN (:...levels)', {
+        levels,
+      });
+    }
+    if (workingModels) {
+      queryBuilder.andWhere('job.workingModel IN (:...workingModels)', {
+        workingModels,
+      });
+    }
+    if (industryIds) {
+      queryBuilder.andWhere('company.industry IN (:...industryIds)', {
+        industryIds,
+      });
+    }
+    if (industries) {
+      queryBuilder.andWhere(
+        '(industry.name_en IN (:...industries) OR industry.name_vi IN (:...industries))',
+        { industries },
+      );
+    }
+    if (minSalary && maxSalary) {
+      queryBuilder
+        .andWhere('job.minSalary >= :minSalary', {
+          minSalary,
+        })
+        .andWhere('job.maxSalary <= :maxSalary', {
+          maxSalary,
+        });
+    }
+
+    queryBuilder.limit(limit).offset(skip);
+
+    const data = await queryBuilder.getRawMany();
+
+    const totalItems = await queryBuilder.getCount();
+    const totalPages = Math.ceil(totalItems / limit);
+    const pagination = {
+      totalPages,
+      totalItems,
+      page,
+      limit,
+    };
+    return {
+      message: 'get company jobs successfully',
+      result: {
+        pagination,
+        data,
+      },
     };
   }
 }

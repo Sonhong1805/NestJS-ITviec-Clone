@@ -5,6 +5,12 @@ export enum APPLICANT_LEVEL {
   MANAGER = 'Manager',
 }
 
+export enum JOB_LABEL {
+  HOT = 'HOT',
+  SUPER_HOT = 'SUPER HOT',
+  NEW = 'NEW',
+}
+
 export enum SKILL_LEVEL {
   EXCELLENT = 'Excellent',
   INTERMEDIAT = 'Intermediate',

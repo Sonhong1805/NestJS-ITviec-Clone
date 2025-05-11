@@ -35,6 +35,11 @@ export class UpdateCompanyDto {
   @IsNotEmpty()
   position: string;
 
+  @ApiProperty({ example: 'developer' })
+  @IsString()
+  @IsOptional()
+  tagline: string;
+
   @ApiProperty({ example: '0123456789' })
   @IsString()
   @IsNotEmpty()

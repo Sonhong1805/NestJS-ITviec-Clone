@@ -21,11 +21,18 @@ import { Public } from 'src/commons/decorators/public.decorator';
 import { CompanyReviewQueryDto } from './dto/company-review-query.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CompanyQueriesDto } from './dto/company-queries.dto';
+import { JobQueriesDto } from './dto/job-queries.dto';
 
 @ApiBearerAuth()
 @Controller('company')
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
+
+  @Roles(ROLE.COMPANY)
+  @Get('jobs')
+  getJobs(@Query() queries: JobQueriesDto, @GetUser() user: User) {
+    return this.companyService.getJobs(queries, user);
+  }
 
   @Public()
   @Get(':param')
@@ -67,8 +74,8 @@ export class CompanyController {
 
   @Public()
   @Get('review/:id')
-  getReview(@Param('id') id: number, @Query() queries: CompanyReviewQueryDto) {
-    return this.companyService.getReview(id, queries);
+  getReviews(@Param('id') id: number, @Query() queries: CompanyReviewQueryDto) {
+    return this.companyService.getReviews(id, queries);
   }
 
   @Roles(ROLE.APPLICANT)
