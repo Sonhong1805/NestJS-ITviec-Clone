@@ -10,12 +10,13 @@ import { JobRepository } from 'src/databases/repositories/job.repository';
 import { ApplicationRepository } from 'src/databases/repositories/application.repository';
 import { StorageService } from '../storage/storage.service';
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
-import { DataSource } from 'typeorm';
+import { DataSource, LessThan } from 'typeorm';
 import { Application } from 'src/databases/entities/application.entity';
 import { Applicant } from 'src/databases/entities/applicant.entity';
 import { ApplicantLocation } from 'src/databases/entities/applicant-location.entity';
 import { ApplicantLocationRepository } from 'src/databases/repositories/applicant-location.repository';
 import { validateCVFile } from 'src/commons/utils/validateCVFile';
+import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
 
 @Injectable()
 export class ApplicationService {
@@ -88,6 +89,7 @@ export class ApplicationService {
         applicantId: findApplicant.id,
         fullName,
         coverLetter,
+        status: 'pending',
       });
 
       delete body.locations;
@@ -157,6 +159,100 @@ export class ApplicationService {
     return {
       message: 'Get all application by Job',
       result,
+    };
+  }
+
+  async getJobStatus(queries: CommonQueryDto, user: User) {
+    const findApplicant = await this.applicantRepository.findOneBy({
+      userId: user.id,
+    });
+    if (!findApplicant) {
+      throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
+    }
+
+    const { sort, limit, page } = queries;
+    const skip = (page - 1) * limit;
+
+    const status = sort['status'];
+    delete sort['status'];
+
+    const where: any = {
+      applicantId: findApplicant.id,
+    };
+
+    if (status === ('expired' as any)) {
+      where.job = {
+        endDate: LessThan(new Date()),
+      };
+    } else {
+      where.status = status;
+    }
+    const [data, totalItems] = await this.applicationRepository.findAndCount({
+      where,
+      relations: {
+        job: {
+          company: true,
+        },
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        status: true,
+        job: {
+          id: true,
+          title: true,
+          slug: true,
+          minSalary: true,
+          maxSalary: true,
+          currencySalary: true,
+          location: true,
+          workingModel: true,
+          startDate: true,
+          endDate: true,
+          company: {
+            name: true,
+            logo: true,
+          },
+        },
+      },
+      order: sort,
+      skip,
+      take: limit,
+    });
+
+    const totalPages = Math.ceil(totalItems / limit);
+    const pagination = {
+      totalPages,
+      totalItems,
+      page,
+      limit,
+    };
+
+    const signedJobs = await Promise.all(
+      data.map(async (jobItem) => {
+        const logoKey = jobItem.job.company.logo;
+        const companyName = jobItem.job.company.name;
+
+        let signedLogoUrl: string | null = null;
+        if (logoKey) {
+          signedLogoUrl = await this.storageService.getSignedUrl(logoKey);
+        }
+
+        jobItem.job.company = {
+          ...(jobItem.job.company as any),
+          companyName,
+          logo: signedLogoUrl,
+        };
+
+        return jobItem;
+      }),
+    );
+    return {
+      message: 'get job status successfully',
+      result: {
+        pagination,
+        data: signedJobs,
+      },
     };
   }
 }

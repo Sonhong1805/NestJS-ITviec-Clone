@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import { CreateApplicationDto } from './dto/create-application.dto';
 import { GetUser } from 'src/commons/decorators/get-current-user.decorator';
 import { User } from 'src/databases/entities/user.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
 @ApiBearerAuth()
 @Controller('application')
 export class ApplicationController {
@@ -31,5 +33,11 @@ export class ApplicationController {
     @GetUser() user: User,
   ) {
     return this.applicationService.create(slug, file, body, user);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('job-status')
+  getJobStatus(@Query() queries: CommonQueryDto, @GetUser() user: User) {
+    return this.applicationService.getJobStatus(queries, user);
   }
 }
