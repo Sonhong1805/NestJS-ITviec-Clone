@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -30,10 +31,30 @@ import { UpsertExperienceDto } from './dto/upsert-experience.dto';
 import { UpsertProjectDto } from './dto/upsert-project.dto';
 import { UpsertCertificateDto } from './dto/upsert-certificate.dto';
 import { UpsertAwardDto } from './dto/upsert-award.dto';
+import { SavedJobsQueryDto } from './dto/saved-jobs-query.dto';
+import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
 @ApiBearerAuth()
 @Controller('applicant')
 export class ApplicantController {
   constructor(private readonly applicantService: ApplicantService) {}
+
+  @Roles(ROLE.APPLICANT)
+  @Get('saved-jobs')
+  getSavedJobs(@Query() query: CommonQueryDto, @GetUser() user: User) {
+    return this.applicantService.getSavedJobs(query, user);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('resent-viewed-jobs')
+  getResentViewdJobs(@Query() query: CommonQueryDto, @GetUser() user: User) {
+    return this.applicantService.getResentViewdJobs(query, user);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('applied-jobs')
+  getAppliedJobs(@Query() query: CommonQueryDto, @GetUser() user: User) {
+    return this.applicantService.getAppliedJobs(query, user);
+  }
 
   @Roles(ROLE.APPLICANT)
   @Get(':userId')

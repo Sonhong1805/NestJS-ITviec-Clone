@@ -34,6 +34,10 @@ import { UpsertCertificateDto } from './dto/upsert-certificate.dto';
 import { ApplicantCertificateRepository } from 'src/databases/repositories/applicant-certificate.repository';
 import { ApplicantAwardRepository } from 'src/databases/repositories/applicant-award.repository';
 import { UpsertAwardDto } from './dto/upsert-award.dto';
+import { WishlistRepository } from 'src/databases/repositories/wishlist.repository';
+import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
+import { JobViewRepository } from 'src/databases/repositories/job-view.repository';
+import { ApplicationRepository } from 'src/databases/repositories/application.repository';
 
 @Injectable()
 export class ApplicantService {
@@ -50,6 +54,9 @@ export class ApplicantService {
     private readonly applicantProjectRepository: ApplicantProjectRepository,
     private readonly applicantCertificateRepository: ApplicantCertificateRepository,
     private readonly applicantAwardRepository: ApplicantAwardRepository,
+    private readonly wishlistRepository: WishlistRepository,
+    private readonly jobViewRepository: JobViewRepository,
+    private readonly applicationRepository: ApplicationRepository,
   ) {}
 
   async getDetailByUser(userId: number) {
@@ -860,6 +867,290 @@ export class ApplicantService {
     return {
       message: 'You deleted an Award.',
       result: id,
+    };
+  }
+
+  async getSavedJobs(query: CommonQueryDto, user: User) {
+    const findApplicant = await this.applicantRepository.findOneBy({
+      userId: user.id,
+    });
+    if (!findApplicant) {
+      throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
+    }
+
+    const { sort } = query;
+
+    const optionSort =
+      sort['endDate'] === 'ASC' ? { job: { endDate: 'ASC' as const } } : sort;
+
+    const savedJobs = await this.wishlistRepository.find({
+      where: {
+        userId: user.id,
+      },
+      relations: {
+        job: {
+          company: true,
+        },
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        job: {
+          id: true,
+          title: true,
+          slug: true,
+          minSalary: true,
+          maxSalary: true,
+          currencySalary: true,
+          location: true,
+          workingModel: true,
+          startDate: true,
+          endDate: true,
+          company: {
+            name: true,
+            logo: true,
+          },
+        },
+      },
+      order: optionSort,
+      take: 20,
+    });
+
+    const signedJobs = await Promise.all(
+      savedJobs.map(async (jobItem) => {
+        const logoKey = jobItem.job.company.logo;
+        const companyName = jobItem.job.company.name;
+
+        let signedLogoUrl: string | null = null;
+        if (logoKey) {
+          signedLogoUrl = await this.storageService.getSignedUrl(logoKey);
+        }
+
+        jobItem.job.company = {
+          ...(jobItem.job.company as any),
+          companyName,
+          logo: signedLogoUrl,
+        };
+        jobItem.job['wishlist'] = false;
+        const findWishlist = await this.wishlistRepository.findOne({
+          where: {
+            userId: user.id,
+            jobId: jobItem.job.id,
+          },
+        });
+        if (findWishlist) {
+          jobItem.job['wishlist'] = true;
+        }
+
+        jobItem.job['hasApplied'] = null;
+        const findApplication = await this.applicationRepository.findOne({
+          where: {
+            applicantId: findApplicant.id,
+            jobId: jobItem.job.id,
+          },
+        });
+        if (findApplication) {
+          jobItem.job['hasApplied'] = findApplication;
+        }
+        return jobItem;
+      }),
+    );
+
+    return {
+      message: 'get saved jobs successfully',
+      result: signedJobs,
+    };
+  }
+
+  async getResentViewdJobs(queries: CommonQueryDto, user: User) {
+    const findApplicant = await this.applicantRepository.findOneBy({
+      userId: user.id,
+    });
+    if (!findApplicant) {
+      throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
+    }
+
+    const { sort, limit, page } = queries;
+    const skip = (page - 1) * limit;
+    const optionSort = (() => {
+      if (sort && sort['endDate'] === 'ASC') {
+        return { job: { endDate: 'ASC' as const } };
+      } else if (sort && sort['startDate'] === 'DESC') {
+        return { job: { startDate: 'DESC' as const } };
+      } else {
+        return sort;
+      }
+    })();
+
+    const [data, totalItems] = await this.jobViewRepository.findAndCount({
+      where: {
+        userId: user.id,
+      },
+      relations: {
+        job: {
+          company: true,
+        },
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        job: {
+          id: true,
+          title: true,
+          slug: true,
+          minSalary: true,
+          maxSalary: true,
+          currencySalary: true,
+          location: true,
+          workingModel: true,
+          startDate: true,
+          endDate: true,
+          company: {
+            name: true,
+            logo: true,
+          },
+        },
+      },
+      order: optionSort,
+      skip,
+      take: limit,
+    });
+
+    const signedJobs = await Promise.all(
+      data.map(async (jobItem) => {
+        const logoKey = jobItem.job.company.logo;
+        const companyName = jobItem.job.company.name;
+
+        let signedLogoUrl: string | null = null;
+        if (logoKey) {
+          signedLogoUrl = await this.storageService.getSignedUrl(logoKey);
+        }
+
+        jobItem.job.company = {
+          ...(jobItem.job.company as any),
+          companyName,
+          logo: signedLogoUrl,
+        };
+
+        jobItem.job['wishlist'] = false;
+        const findWishlist = await this.wishlistRepository.findOne({
+          where: {
+            userId: user.id,
+            jobId: jobItem.job.id,
+          },
+        });
+        if (findWishlist) {
+          jobItem.job['wishlist'] = true;
+        }
+
+        jobItem.job['hasApplied'] = null;
+        const findApplication = await this.applicationRepository.findOne({
+          where: {
+            applicantId: findApplicant.id,
+            jobId: jobItem.job.id,
+          },
+        });
+        if (findApplication) {
+          jobItem.job['hasApplied'] = findApplication;
+        }
+        return jobItem;
+      }),
+    );
+
+    const totalPages = Math.ceil(totalItems / limit);
+    const pagination = {
+      totalPages,
+      totalItems,
+      page,
+      limit,
+    };
+
+    return {
+      message: 'get resent viewd jobs successfully',
+      result: {
+        pagination,
+        data: signedJobs,
+      },
+    };
+  }
+
+  async getAppliedJobs(queries: CommonQueryDto, user: User) {
+    const findApplicant = await this.applicantRepository.findOneBy({
+      userId: user.id,
+    });
+    if (!findApplicant) {
+      throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
+    }
+    const { sort, limit, page } = queries;
+    const skip = (page - 1) * limit;
+    const [data, totalItems] = await this.applicationRepository.findAndCount({
+      where: {
+        applicantId: findApplicant.id,
+      },
+      relations: {
+        job: {
+          company: true,
+        },
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        job: {
+          id: true,
+          title: true,
+          slug: true,
+          minSalary: true,
+          maxSalary: true,
+          currencySalary: true,
+          location: true,
+          workingModel: true,
+          startDate: true,
+          endDate: true,
+          company: {
+            name: true,
+            logo: true,
+          },
+        },
+      },
+      order: sort,
+      skip,
+      take: limit,
+    });
+
+    const totalPages = Math.ceil(totalItems / limit);
+    const pagination = {
+      totalPages,
+      totalItems,
+      page,
+      limit,
+    };
+
+    const signedJobs = await Promise.all(
+      data.map(async (jobItem) => {
+        const logoKey = jobItem.job.company.logo;
+        const companyName = jobItem.job.company.name;
+
+        let signedLogoUrl: string | null = null;
+        if (logoKey) {
+          signedLogoUrl = await this.storageService.getSignedUrl(logoKey);
+        }
+
+        jobItem.job.company = {
+          ...(jobItem.job.company as any),
+          companyName,
+          logo: signedLogoUrl,
+        };
+
+        return jobItem;
+      }),
+    );
+
+    return {
+      message: 'get applied jobs successfully',
+      result: {
+        pagination,
+        data: signedJobs,
+      },
     };
   }
 }

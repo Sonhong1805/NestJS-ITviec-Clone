@@ -5,7 +5,7 @@ import { JobSkillRepository } from 'src/databases/repositories/job-skill.reposit
 import { JobViewRepository } from 'src/databases/repositories/job-view.repository';
 import { JobRepository } from 'src/databases/repositories/job.repository';
 import { ResdisService } from '../redis/redis.service';
-import { DataSource, In } from 'typeorm';
+import { DataSource, In, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { UpsertJobDto } from './dto/upsert-job.dto';
 import { User } from 'src/databases/entities/user.entity';
 import { Job } from 'src/databases/entities/job.entity';
@@ -284,37 +284,6 @@ export class JobService {
     };
   }
 
-  async getAllByViewed(queries: CommonQueryDto, user: User) {
-    const { page, limit } = queries;
-    const skip = (page - 1) * limit;
-    const [data, total] = await this.jobRepository.findAndCount({
-      where: {
-        jobViews: {
-          userId: user.id,
-        },
-      },
-      skip,
-      take: limit,
-      order: {
-        jobViews: {
-          updatedAt: 'DESC',
-        },
-      },
-    });
-
-    return {
-      message: 'get recent jobs successfully',
-      result: {
-        data,
-        metadata: {
-          total,
-          page,
-          limit,
-        },
-      },
-    };
-  }
-
   async getAll(queries: JobQueriesDto, user: User) {
     const {
       page,
@@ -552,67 +521,53 @@ export class JobService {
     };
   }
 
-  async wishlist(id: number, user: User) {
+  async wishlist(jobId: number, user: User) {
     const wishlist = await this.wishlistRepository.findOneBy({
-      jobId: id,
+      jobId,
       userId: user.id,
     });
 
     if (wishlist) {
       await this.wishlistRepository.delete({
-        jobId: id,
+        jobId,
         userId: user.id,
       });
     } else {
+      const [, count] = await this.wishlistRepository.findAndCount({
+        where: { userId: user.id },
+      });
+      if (count >= 20) {
+        throw new HttpException(
+          'You have reached the limit of 20 Saved Jobs. If you want to create a new one, please manage your Saved Jobs.',
+          HttpStatus.FORBIDDEN,
+        );
+      }
       await this.wishlistRepository.save({
-        jobId: id,
+        jobId,
         userId: user.id,
       });
     }
 
     return {
-      message: 'wishlist job successfully',
+      message: wishlist
+        ? 'You unsaved a job.'
+        : 'This job has been added to your Saved jobs.',
       result: wishlist ? false : true,
     };
   }
 
-  // async getAllByFavorite(queries: CommonQueryDto, user: User) {
-  //   const { page, limit } = queries;
-  //   const skip = (page - 1) * limit;
-  //   const [data, total] = await this.jobRepository.findAndCount({
-  //     where: {
-  //       jobSaves: {
-  //         userId: user.id,
-  //       },
-  //     },
-  //     skip,
-  //     take: limit,
-  //     relations: ['jobSaves'],
-  //     order: {
-  //       jobSaves: {
-  //         createdAt: 'DESC',
-  //       },
-  //     },
-  //   });
-
-  //   return {
-  //     message: 'get all fa jobs successfully',
-  //     result: {
-  //       data,
-  //       metadata: {
-  //         total,
-  //         page,
-  //         limit,
-  //       },
-  //     },
-  //   };
-  // }
-
   async getQuantity() {
-    const quantity = await this.jobRepository.count();
+    const now = new Date();
+
+    const quantity = await this.jobRepository.count({
+      where: {
+        startDate: LessThanOrEqual(now),
+        endDate: MoreThanOrEqual(now),
+      },
+    });
 
     return {
-      message: 'get quantity all job successfully',
+      message: 'Get quantity of currently active jobs successfully',
       result: quantity,
     };
   }

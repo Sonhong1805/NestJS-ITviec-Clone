@@ -64,14 +64,8 @@ export class JobController {
   }
 
   @Roles(ROLE.APPLICANT)
-  @Get('viewed')
-  getAllByViewed(@Query('') queries: CommonQueryDto, @GetUser() user: User) {
-    return this.jobService.getAllByViewed(queries, user);
-  }
-
-  @Roles(ROLE.APPLICANT)
-  @Post('wishlist/:id')
-  wishlist(@Param('id') id: number, @GetUser() user: User) {
-    return this.jobService.wishlist(id, user);
+  @Post('wishlist/:jobId')
+  wishlist(@Param('jobId') jobId: number, @GetUser() user: User) {
+    return this.jobService.wishlist(jobId, user);
   }
 }

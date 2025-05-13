@@ -12,21 +12,27 @@ import { ApplicantExperienceRepository } from 'src/databases/repositories/applic
 import { ApplicantProjectRepository } from 'src/databases/repositories/applicant-project.repository';
 import { ApplicantCertificateRepository } from 'src/databases/repositories/applicant-certificate.repository';
 import { ApplicantAwardRepository } from 'src/databases/repositories/applicant-award.repository';
+import { WishlistRepository } from 'src/databases/repositories/wishlist.repository';
+import { JobViewRepository } from 'src/databases/repositories/job-view.repository';
+import { ApplicationRepository } from 'src/databases/repositories/application.repository';
 
 @Module({
   controllers: [ApplicantController],
   providers: [
-    ApplicantService,
     StorageService,
+    ApplicantService,
     ApplicantRepository,
     ApplicantSkillRepository,
+    ApplicantExperienceRepository,
     ApplicantLocationRepository,
     ApplicantWorkingModelRepository,
-    ApplicantEducationRepository,
-    ApplicantExperienceRepository,
-    ApplicantProjectRepository,
     ApplicantCertificateRepository,
+    ApplicantEducationRepository,
+    ApplicantProjectRepository,
     ApplicantAwardRepository,
+    ApplicationRepository,
+    WishlistRepository,
+    JobViewRepository,
     UserRepository,
   ],
 })
