@@ -41,5 +41,28 @@ export class MailProcessor extends WorkerHost {
         },
       );
     }
+    if (job.name === 'change-password') {
+      await this.mailService.sendMail(
+        job.data.email,
+        `${job.data.email}, Your ITviec password has been changed`,
+        'change-password',
+        {
+          username: job.data.username,
+          email: job.data.email,
+          path: job.data.path,
+        },
+      );
+    }
+    if (job.name === 'delete-account') {
+      await this.mailService.sendMail(
+        job.data.email,
+        `Confirm your account deletion for ITviec.com`,
+        'delete-account',
+        {
+          username: job.data.username,
+          code: job.data.code,
+        },
+      );
+    }
   }
 }

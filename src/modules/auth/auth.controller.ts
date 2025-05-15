@@ -12,6 +12,8 @@ import { ROLE } from 'src/commons/enums/user.enum';
 import { Request, Response } from 'express';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -79,5 +81,23 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(body);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Post('change-password')
+  changePassword(@Body() body: ChangePasswordDto, @GetUser() user: User) {
+    return this.authService.changePassword(body, user);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('delete-code')
+  createDeleteCode(@GetUser() user: User) {
+    return this.authService.createDeleteCode(user);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Post('delete-account')
+  deleteAccount(@Body() body: DeleteAccountDto, @GetUser() user: User) {
+    return this.authService.deleteAccount(body, user);
   }
 }

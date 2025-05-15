@@ -30,3 +30,19 @@ export const randomPassword = (length = 12) => {
 
   return result;
 };
+
+export const generateRandomCode = (length = 24) => {
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const allCharacters = uppercase + lowercase + numbers;
+
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += allCharacters.charAt(
+      Math.floor(Math.random() * allCharacters.length),
+    );
+  }
+
+  return result;
+};

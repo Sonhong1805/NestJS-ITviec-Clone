@@ -12,10 +12,11 @@ import { CompanyFollow } from './company-follow.entity';
 import { CompanyReview } from './company-review.entity';
 import { JobView } from './job-view.entity';
 import { Wishlist } from './wishlist.entity';
+import { BaseEntity } from './base.entity';
 
 @Index('users_pkey', ['id'], { unique: true })
 @Entity('users', { schema: 'public' })
-export class User {
+export class User extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
 
@@ -44,22 +45,14 @@ export class User {
   @Column('text', { name: 'refresh_token', nullable: true })
   refreshToken: string | null;
 
-  @Column('timestamp without time zone', {
-    name: 'created_at',
-    nullable: true,
-    default: () => 'CURRENT_TIMESTAMP',
-  })
-  createdAt: Date | null;
+  @Column('character varying', { name: 'delete_code', nullable: true })
+  deleteCode: string | null;
 
   @Column('timestamp without time zone', {
-    name: 'updated_at',
+    name: 'delete_code_expires_at',
     nullable: true,
-    default: () => 'CURRENT_TIMESTAMP',
   })
-  updatedAt: Date | null;
-
-  @Column('timestamp without time zone', { name: 'deleted_at', nullable: true })
-  deletedAt: Date | null;
+  deleteCodeExpiresAt: Date | null;
 
   @OneToOne(() => Applicant, (applicants) => applicants.user)
   applicants: Applicant;

@@ -192,9 +192,9 @@ export class ApplicantService {
     };
   }
 
-  async getSkills(applicantId: number) {
+  async getSkills(user: User) {
     const findApplicant = await this.applicantRepository.findOneBy({
-      id: applicantId,
+      userId: user.id,
     });
     if (!findApplicant) {
       throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
@@ -202,7 +202,7 @@ export class ApplicantService {
 
     const applicantSkills = await this.applicantSkillRepository.find({
       where: {
-        applicantId,
+        applicantId: findApplicant.id,
       },
       relations: { skill: true },
     });
@@ -564,9 +564,9 @@ export class ApplicantService {
     };
   }
 
-  async getEducations(applicantId: number) {
+  async getEducations(user: User) {
     const findApplicant = await this.applicantRepository.findOneBy({
-      id: applicantId,
+      userId: user.id,
     });
     if (!findApplicant) {
       throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
@@ -574,7 +574,7 @@ export class ApplicantService {
 
     const educations = await this.applicantEducationRepository.find({
       where: {
-        applicantId,
+        applicantId: findApplicant.id,
       },
       order: { createdAt: 'DESC' },
     });
@@ -629,9 +629,9 @@ export class ApplicantService {
     };
   }
 
-  async getExperiences(applicantId: number) {
+  async getExperiences(user: User) {
     const findApplicant = await this.applicantRepository.findOneBy({
-      id: applicantId,
+      userId: user.id,
     });
     if (!findApplicant) {
       throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
@@ -639,7 +639,7 @@ export class ApplicantService {
 
     const experiences = await this.applicantExperienceRepository.find({
       where: {
-        applicantId,
+        applicantId: findApplicant.id,
       },
       order: { createdAt: 'DESC' },
     });
@@ -694,9 +694,9 @@ export class ApplicantService {
     };
   }
 
-  async getProjects(applicantId: number) {
+  async getProjects(user: User) {
     const findApplicant = await this.applicantRepository.findOneBy({
-      id: applicantId,
+      userId: user.id,
     });
     if (!findApplicant) {
       throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
@@ -704,7 +704,7 @@ export class ApplicantService {
 
     const projects = await this.applicantProjectRepository.find({
       where: {
-        applicantId,
+        applicantId: findApplicant.id,
       },
       order: { createdAt: 'DESC' },
     });
@@ -759,9 +759,9 @@ export class ApplicantService {
     };
   }
 
-  async getCertificates(applicantId: number) {
+  async getCertificates(user: User) {
     const findApplicant = await this.applicantRepository.findOneBy({
-      id: applicantId,
+      userId: user.id,
     });
     if (!findApplicant) {
       throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
@@ -769,7 +769,7 @@ export class ApplicantService {
 
     const certificates = await this.applicantCertificateRepository.find({
       where: {
-        applicantId,
+        applicantId: findApplicant.id,
       },
       order: { createdAt: 'DESC' },
     });
@@ -824,9 +824,9 @@ export class ApplicantService {
     };
   }
 
-  async getAwards(applicantId: number) {
+  async getAwards(user: User) {
     const findApplicant = await this.applicantRepository.findOneBy({
-      id: applicantId,
+      userId: user.id,
     });
     if (!findApplicant) {
       throw new HttpException('applicant not found', HttpStatus.NOT_FOUND);
@@ -834,7 +834,7 @@ export class ApplicantService {
 
     const awards = await this.applicantAwardRepository.find({
       where: {
-        applicantId,
+        applicantId: findApplicant.id,
       },
       order: { createdAt: 'DESC' },
     });

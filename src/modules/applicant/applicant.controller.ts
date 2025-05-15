@@ -31,12 +31,47 @@ import { UpsertExperienceDto } from './dto/upsert-experience.dto';
 import { UpsertProjectDto } from './dto/upsert-project.dto';
 import { UpsertCertificateDto } from './dto/upsert-certificate.dto';
 import { UpsertAwardDto } from './dto/upsert-award.dto';
-import { SavedJobsQueryDto } from './dto/saved-jobs-query.dto';
 import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
 @ApiBearerAuth()
 @Controller('applicant')
 export class ApplicantController {
   constructor(private readonly applicantService: ApplicantService) {}
+
+  @Roles(ROLE.APPLICANT)
+  @Get('educations')
+  getEducations(@GetUser() user: User) {
+    return this.applicantService.getEducations(user);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('experiences')
+  getExperiences(@GetUser() user: User) {
+    return this.applicantService.getExperiences(user);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('projects')
+  getProjects(@GetUser() user: User) {
+    return this.applicantService.getProjects(user);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('certificates')
+  getCertificates(@GetUser() user: User) {
+    return this.applicantService.getCertificates(user);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('awards')
+  getAwards(@GetUser() user: User) {
+    return this.applicantService.getAwards(user);
+  }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('skills')
+  getSkills(@GetUser() user: User) {
+    return this.applicantService.getSkills(user);
+  }
 
   @Roles(ROLE.APPLICANT)
   @Get('saved-jobs')
@@ -124,12 +159,6 @@ export class ApplicantController {
   }
 
   @Public()
-  @Get('educations/:applicantId')
-  getEducations(@Param('applicantId') applicantId: number) {
-    return this.applicantService.getEducations(applicantId);
-  }
-
-  @Public()
   @Put('education/:id')
   updateEducation(@Param('id') id: number, @Body() body: UpsertEducationDto) {
     return this.applicantService.updateEducation(id, body);
@@ -145,12 +174,6 @@ export class ApplicantController {
   @Post('experience')
   createExperience(@Body() body: UpsertExperienceDto, @GetUser() user: User) {
     return this.applicantService.createExperience(body, user);
-  }
-
-  @Public()
-  @Get('experiences/:applicantId')
-  getExperiences(@Param('applicantId') applicantId: number) {
-    return this.applicantService.getExperiences(applicantId);
   }
 
   @Public()
@@ -172,12 +195,6 @@ export class ApplicantController {
   }
 
   @Public()
-  @Get('projects/:applicantId')
-  getProjects(@Param('applicantId') applicantId: number) {
-    return this.applicantService.getProjects(applicantId);
-  }
-
-  @Public()
   @Put('project/:id')
   updateProject(@Param('id') id: number, @Body() body: UpsertProjectDto) {
     return this.applicantService.updateProject(id, body);
@@ -193,12 +210,6 @@ export class ApplicantController {
   @Post('certificate')
   createCertificate(@Body() body: UpsertCertificateDto, @GetUser() user: User) {
     return this.applicantService.createCertificate(body, user);
-  }
-
-  @Public()
-  @Get('certificates/:applicantId')
-  getCertificates(@Param('applicantId') applicantId: number) {
-    return this.applicantService.getCertificates(applicantId);
   }
 
   @Public()
@@ -223,12 +234,6 @@ export class ApplicantController {
   }
 
   @Public()
-  @Get('awards/:applicantId')
-  getAwards(@Param('applicantId') applicantId: number) {
-    return this.applicantService.getAwards(applicantId);
-  }
-
-  @Public()
   @Put('award/:id')
   updateAward(@Param('id') id: number, @Body() body: UpsertAwardDto) {
     return this.applicantService.updateAward(id, body);
@@ -244,11 +249,5 @@ export class ApplicantController {
   @Post('skills')
   createSkills(@Body() body: CreateSkillDto, @GetUser() user: User) {
     return this.applicantService.createSkills(body, user);
-  }
-
-  @Public()
-  @Get('skills/:applicantId')
-  getSkills(@Param('applicantId') applicantId: number) {
-    return this.applicantService.getSkills(applicantId);
   }
 }

@@ -24,9 +24,10 @@ import { Request, Response } from 'express';
 import * as ms from 'ms';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { randomPassword } from 'src/commons/utils/random';
+import { generateRandomCode, randomPassword } from 'src/commons/utils/random';
 import { convertToSlug } from 'src/commons/utils/convertToSlug';
-import { StorageService } from '../storage/storage.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 
 @Injectable()
 export class AuthService {
@@ -36,8 +37,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
-    private readonly storageService: StorageService,
-
     @InjectQueue('mail-queue') private mailQueue: Queue,
   ) {}
 
@@ -74,19 +73,29 @@ export class AuthService {
   async login(body: LoginDto, response: Response) {
     const { email, password } = body;
 
-    const findUser = await this.userRepository.findOneBy({ email });
+    const findUser = await this.userRepository.findOne({
+      where: { email },
+      withDeleted: true,
+    });
     if (!findUser) {
       throw new HttpException(
-        'Incorrect Email address or password',
-        HttpStatus.UNAUTHORIZED,
+        'Account not found. Please check your email or sign up.',
+        HttpStatus.NOT_FOUND,
       );
     }
 
     const isPasswordValid = await argon2.verify(findUser.password, password);
     if (!isPasswordValid) {
       throw new HttpException(
-        'Incorrect Email address or password',
-        HttpStatus.UNAUTHORIZED,
+        'Incorrect email address or password',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (findUser.deletedAt) {
+      throw new HttpException(
+        'Your account has been deleted. Please sign up new account to continue using ITviec',
+        HttpStatus.BAD_REQUEST,
       );
     }
 
@@ -479,5 +488,99 @@ export class AuthService {
     return {
       message: 'reset password successfully',
     };
+  }
+
+  async changePassword(body: ChangePasswordDto, user: User) {
+    const { currentPassword, newPassword } = body;
+    const findUser = await this.userRepository.findOneBy({ id: user.id });
+    if (!findUser) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    const isMatch = await argon2.verify(findUser.password, currentPassword);
+    if (!isMatch) {
+      throw new HttpException(
+        'Update new password failed!',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const hashPassword = await argon2.hash(newPassword);
+
+    const updatedPassword = await this.userRepository.update(
+      {
+        id: findUser.id,
+      },
+      {
+        password: hashPassword,
+      },
+    );
+
+    const clientUrl = this.configService.get('clientUrl');
+
+    await this.mailQueue.add('change-password', {
+      username: findUser.username,
+      email: findUser.email,
+      path: clientUrl,
+    });
+    return {
+      message: 'Update password successfully',
+      result: updatedPassword ? true : false,
+    };
+  }
+
+  async createDeleteCode(user: User) {
+    const findUser = await this.userRepository.findOneBy({ id: user.id });
+    if (!findUser) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const randomDeleteCode = generateRandomCode(24);
+    const expiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000);
+
+    const updatedUserCode = await this.userRepository.update(
+      {
+        id: user.id,
+      },
+      {
+        deleteCode: randomDeleteCode,
+        deleteCodeExpiresAt: expiresAt,
+      },
+    );
+    await this.mailQueue.add('delete-account', {
+      username: findUser.username,
+      email: findUser.email,
+      code: randomDeleteCode,
+    });
+    return {
+      message: 'Created delete code successfully',
+      result: updatedUserCode ? true : false,
+    };
+  }
+
+  async deleteAccount(body: DeleteAccountDto, user: User) {
+    const findUser = await this.userRepository.findOneBy({ id: user.id });
+    if (!findUser) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    const now = new Date();
+    if (findUser.deleteCodeExpiresAt < now) {
+      throw new HttpException(
+        'The delete code has expired. Please request a new code.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const { code } = body;
+    if (findUser.deleteCode === code) {
+      const result = await this.userRepository.softDelete(user.id);
+      return {
+        message: 'Delete account successfully',
+        result: result ? true : false,
+      };
+    } else {
+      throw new HttpException(
+        'The code you entered is incorrect or no longer valid. Please double-check and try again.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 }
