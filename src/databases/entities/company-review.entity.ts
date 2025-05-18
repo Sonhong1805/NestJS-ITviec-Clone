@@ -61,6 +61,9 @@ export class CompanyReview extends BaseEntity {
   @Column('integer', { name: 'is_recommend', nullable: true })
   isRecommend: boolean | null;
 
+  @Column('integer', { name: 'status', nullable: true })
+  status: string | null;
+
   @ManyToOne(() => Company, (companies) => companies.companyReviews)
   @JoinColumn([{ name: 'company_id', referencedColumnName: 'id' }])
   company: Company;

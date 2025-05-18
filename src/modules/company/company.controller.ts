@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -23,6 +25,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { CompanyQueriesDto } from './dto/company-queries.dto';
 import { JobQueriesDto } from './dto/job-queries.dto';
 import { AllCVQueriesDto } from './dto/all-cv-queries.dto';
+import { AllReviewQueriesDto } from './dto/all-review-queries.dto';
+import { ChangeStatusReviewDto } from './dto/change-status-review.dto';
 
 @ApiBearerAuth()
 @Controller('company')
@@ -39,6 +43,12 @@ export class CompanyController {
   @Get('all-cv')
   getAllCV(@Query() queries: AllCVQueriesDto, @GetUser() user: User) {
     return this.companyService.getAllCV(queries, user);
+  }
+
+  @Roles(ROLE.COMPANY)
+  @Get('all-review')
+  getAllReview(@Query() queries: AllReviewQueriesDto, @GetUser() user: User) {
+    return this.companyService.getAllReview(queries, user);
   }
 
   @Public()
@@ -89,5 +99,20 @@ export class CompanyController {
   @Post('follow/:id')
   follow(@Param('id') id: number, @GetUser() user: User) {
     return this.companyService.follow(id, user);
+  }
+
+  @Roles(ROLE.COMPANY)
+  @Delete('review/:id')
+  deleteReview(@Param('id') id: number) {
+    return this.companyService.deleteReview(id);
+  }
+
+  @Roles(ROLE.COMPANY)
+  @Patch('review/:id/status')
+  changeStatusReview(
+    @Param('id') id: number,
+    @Body() body: ChangeStatusReviewDto,
+  ) {
+    return this.companyService.changeStatusReview(id, body);
   }
 }

@@ -49,3 +49,8 @@ export enum OVERTIME_POLICY_SATISFACTION {
   SATISFIED = 'satisfied',
   UNSATISFIED = 'unsatisfied',
 }
+
+export enum STATUS_REVIEW {
+  SHOW = 'Show',
+  HIDE = 'Hide',
+}

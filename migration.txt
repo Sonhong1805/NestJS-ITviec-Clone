@@ -1,0 +1,8 @@
+//create
+npm run typeorm:create ...
+
+//run
+npm run typeorm:run
+
+//revert
+npm run typeorm:revert

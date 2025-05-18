@@ -26,6 +26,8 @@ import { JobQueriesDto } from './dto/job-queries.dto';
 import { convertKeySortJob } from 'src/commons/utils/helper';
 import { ApplicationRepository } from 'src/databases/repositories/application.repository';
 import { AllCVQueriesDto } from './dto/all-cv-queries.dto';
+import { AllReviewQueriesDto } from './dto/all-review-queries.dto';
+import { ChangeStatusReviewDto } from './dto/change-status-review.dto';
 
 @Injectable()
 export class CompanyService {
@@ -340,6 +342,7 @@ export class CompanyService {
       ...body,
       companyId: id,
       userId: user.id,
+      status: 'Show',
     });
 
     return {
@@ -684,6 +687,64 @@ export class CompanyService {
         pagination,
         data: signedCV,
       },
+    };
+  }
+
+  async getAllReview(queries: AllReviewQueriesDto, user: User) {
+    const findCompany = await this.companyRepository.findOneBy({
+      userId: user.id,
+    });
+    if (!findCompany) {
+      throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
+    }
+
+    const { limit, page, sort } = queries;
+    const skip = (page - 1) * limit;
+    const [data, totalItems] = await this.companyReviewRepository.findAndCount({
+      where: { companyId: findCompany.id },
+      relations: { user: true },
+      withDeleted: true,
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    const totalPages = Math.ceil(totalItems / limit);
+    const pagination = {
+      totalPages,
+      totalItems,
+      page,
+      limit,
+    };
+    return {
+      message: 'get all review successfully',
+      result: {
+        pagination,
+        data,
+      },
+    };
+  }
+
+  async deleteReview(id: number) {
+    await this.companyReviewRepository.softDelete(id);
+
+    const deletedReview = await this.companyReviewRepository.findOne({
+      where: { id },
+      withDeleted: true,
+    });
+
+    return {
+      message: 'Deleted review successfully',
+      result: deletedReview.deletedAt,
+    };
+  }
+
+  async changeStatusReview(id: number, body: ChangeStatusReviewDto) {
+    const { status } = body;
+    await this.companyReviewRepository.update({ id }, { status });
+    return {
+      message: `${status} review successfully`,
+      result: status,
     };
   }
 }
