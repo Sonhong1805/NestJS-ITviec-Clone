@@ -10,6 +10,7 @@ import {
 import { Applicant } from './applicant.entity';
 import { BaseEntity } from './base.entity';
 import { Job } from './job.entity';
+import { ApplicationLocation } from './application-location.entity';
 
 @Index('applications_pkey', ['id'], { unique: true })
 @Entity('applications', { schema: 'public' })
@@ -17,8 +18,14 @@ export class Application extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
 
+  @Column('character varying', { name: 'cv', nullable: true })
+  cv: string | null;
+
   @Column('character varying', { name: 'full_name', nullable: true })
   fullName: string | null;
+
+  @Column('character varying', { name: 'phone_number', nullable: true })
+  phoneNumber: string | null;
 
   @Column('text', { name: 'cover_letter', nullable: true })
   coverLetter: string | null;
@@ -39,4 +46,10 @@ export class Application extends BaseEntity {
   @ManyToOne(() => Job, (jobs) => jobs.applications)
   @JoinColumn([{ name: 'job_id', referencedColumnName: 'id' }])
   job: Job;
+
+  @OneToMany(
+    () => ApplicationLocation,
+    (ApplicationLocation) => ApplicationLocation.application,
+  )
+  applicationLocations: ApplicationLocation[];
 }

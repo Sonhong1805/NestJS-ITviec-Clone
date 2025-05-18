@@ -24,6 +24,8 @@ import { JobRepository } from 'src/databases/repositories/job.repository';
 import { CompanyQueriesDto } from './dto/company-queries.dto';
 import { JobQueriesDto } from './dto/job-queries.dto';
 import { convertKeySortJob } from 'src/commons/utils/helper';
+import { ApplicationRepository } from 'src/databases/repositories/application.repository';
+import { AllCVQueriesDto } from './dto/all-cv-queries.dto';
 
 @Injectable()
 export class CompanyService {
@@ -37,6 +39,7 @@ export class CompanyService {
     private readonly companySkillRepository: CompanySkillRepository,
     private readonly companyFollowRepository: CompanyFollowRepository,
     private readonly jobRepository: JobRepository,
+    private readonly applicationRepository: ApplicationRepository,
   ) {}
 
   async update(
@@ -154,14 +157,14 @@ export class CompanyService {
         where: { id, userId: user.id },
       });
 
-      if (updatedCompany.logo && updatedCompany.logo !== findCompany.logo) {
+      if (findCompany.logo !== logo) {
+        await this.storageService.deleteFile(findCompany.logo);
+      }
+
+      if (updatedCompany.logo) {
         updatedCompany.logo = await this.storageService.getSignedUrl(
           updatedCompany.logo,
         );
-      }
-
-      if (findCompany.logo !== logo) {
-        await this.storageService.deleteFile(findCompany.logo);
       }
 
       delete body.skillIds;
@@ -609,6 +612,77 @@ export class CompanyService {
       result: {
         pagination,
         data,
+      },
+    };
+  }
+
+  async getAllCV(queries: AllCVQueriesDto, user: User) {
+    const { page, limit, sort } = queries;
+    const findCompany = await this.companyRepository.findOneBy({
+      userId: user.id,
+    });
+    if (!findCompany) {
+      throw new HttpException('company not found', HttpStatus.NOT_FOUND);
+    }
+
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.applicationRepository
+      .createQueryBuilder('application')
+      .withDeleted()
+      .leftJoin('application.job', 'job')
+      .leftJoin('application.applicationLocations', 'location')
+      .select([
+        'application.id AS "id"',
+        'application.fullName AS "fullName"',
+        'application.phoneNumber AS "phoneNumber"',
+        'application.cv AS "cv"',
+        'application.applicantId AS "applicantId"',
+        'application.coverLetter AS "coverLetter"',
+        'application.status AS "status"',
+        'application.createdAt AS "createdAt"',
+        'application.updatedAt AS "updatedAt"',
+        'application.deletedAt AS "deletedAt"',
+        'job.id AS "jobId"',
+        'job.title AS "jobTitle"',
+        'job.endDate AS "jobEndDate"',
+        "JSON_AGG(json_build_object('id', location.id, 'location', location.location)) AS locations",
+      ])
+      .where('job.companyId = :companyId', { companyId: findCompany.id })
+      .groupBy('application.id, job.id');
+
+    queryBuilder.addOrderBy('application.createdAt', 'DESC');
+
+    queryBuilder.limit(limit).offset(skip);
+    const data = await queryBuilder.getRawMany();
+
+    const signedCV = await Promise.all(
+      data.map(async (item) => {
+        const { cv } = item;
+        const cvUrl = cv ? await this.storageService.getSignedUrl(cv) : '';
+        const locations = item.locations.map((location) => location.location);
+
+        return {
+          ...item,
+          cvUrl,
+          locations,
+        };
+      }),
+    );
+
+    const totalItems = await queryBuilder.getCount();
+    const totalPages = Math.ceil(totalItems / limit);
+    const pagination = {
+      totalPages,
+      totalItems,
+      page,
+      limit,
+    };
+    return {
+      message: 'get all cv successfully',
+      result: {
+        pagination,
+        data: signedCV,
       },
     };
   }

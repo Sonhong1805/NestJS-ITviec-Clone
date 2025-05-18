@@ -64,5 +64,41 @@ export class MailProcessor extends WorkerHost {
         },
       );
     }
+    if (job.name === 'application-success') {
+      await this.mailService.sendMail(
+        job.data.email,
+        `We received your CV for ${job.data.job} at ${job.data.company}`,
+        'application-success',
+        {
+          username: job.data.username,
+          job: job.data.job,
+          company: job.data.company,
+        },
+      );
+    }
+    if (job.name === 'cv-accepted') {
+      await this.mailService.sendMail(
+        job.data.email,
+        `Cập nhật tình trạng hồ sơ của bạn cho vị trí ${job.data.job} tại ${job.data.company}`,
+        'cv-accepted',
+        {
+          username: job.data.username,
+          job: job.data.job,
+          company: job.data.company,
+        },
+      );
+    }
+    if (job.name === 'cv-reject') {
+      await this.mailService.sendMail(
+        job.data.email,
+        `Cập nhật tình trạng hồ sơ của bạn cho vị trí ${job.data.job} tại ${job.data.company}`,
+        'cv-reject',
+        {
+          username: job.data.username,
+          job: job.data.job,
+          company: job.data.company,
+        },
+      );
+    }
   }
 }

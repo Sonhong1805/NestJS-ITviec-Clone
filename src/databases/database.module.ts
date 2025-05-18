@@ -22,6 +22,7 @@ import { ApplicantIndustry } from './entities/applicant-industry.entity';
 import { ApplicantProject } from './entities/applicant-project.entity';
 import { ApplicantCertificate } from './entities/applicant-certificate.entity';
 import { ApplicantAward } from './entities/applicant-award.entity';
+import { ApplicationLocation } from './entities/application-location.entity';
 
 @Global()
 @Module({
@@ -48,6 +49,7 @@ import { ApplicantAward } from './entities/applicant-award.entity';
       ApplicantIndustry,
       ApplicantProject,
       ApplicantCertificate,
+      ApplicationLocation,
       ApplicantAward,
     ]),
   ],

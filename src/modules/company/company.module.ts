@@ -9,6 +9,7 @@ import { UserRepository } from 'src/databases/repositories/user.repository';
 import { CompanySkillRepository } from 'src/databases/repositories/company-skill.repository';
 import { CompanyFollowRepository } from 'src/databases/repositories/company-follow.repository';
 import { JobRepository } from 'src/databases/repositories/job.repository';
+import { ApplicationRepository } from 'src/databases/repositories/application.repository';
 
 @Module({
   controllers: [CompanyController],
@@ -21,6 +22,7 @@ import { JobRepository } from 'src/databases/repositories/job.repository';
     UserRepository,
     CompanySkillRepository,
     CompanyFollowRepository,
+    ApplicationRepository,
     JobRepository,
   ],
 })

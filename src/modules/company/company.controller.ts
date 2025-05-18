@@ -22,6 +22,7 @@ import { CompanyReviewQueryDto } from './dto/company-review-query.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CompanyQueriesDto } from './dto/company-queries.dto';
 import { JobQueriesDto } from './dto/job-queries.dto';
+import { AllCVQueriesDto } from './dto/all-cv-queries.dto';
 
 @ApiBearerAuth()
 @Controller('company')
@@ -32,6 +33,12 @@ export class CompanyController {
   @Get('jobs')
   getJobs(@Query() queries: JobQueriesDto, @GetUser() user: User) {
     return this.companyService.getJobs(queries, user);
+  }
+
+  @Roles(ROLE.COMPANY)
+  @Get('all-cv')
+  getAllCV(@Query() queries: AllCVQueriesDto, @GetUser() user: User) {
+    return this.companyService.getAllCV(queries, user);
   }
 
   @Public()

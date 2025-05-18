@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UploadedFile,
@@ -17,6 +19,8 @@ import { GetUser } from 'src/commons/decorators/get-current-user.decorator';
 import { User } from 'src/databases/entities/user.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
+import { Public } from 'src/commons/decorators/public.decorator';
+import { ChangeStatusDto } from './dto/change-status.dto';
 @ApiBearerAuth()
 @Controller('application')
 export class ApplicationController {
@@ -39,5 +43,17 @@ export class ApplicationController {
   @Get('job-status')
   getJobStatus(@Query() queries: CommonQueryDto, @GetUser() user: User) {
     return this.applicationService.getJobStatus(queries, user);
+  }
+
+  @Roles(ROLE.COMPANY)
+  @Delete(':id')
+  delete(@Param('id') id: number) {
+    return this.applicationService.delete(id);
+  }
+
+  @Public()
+  @Patch(':id/status')
+  changeStatus(@Param('id') id: number, @Body() body: ChangeStatusDto) {
+    return this.applicationService.changeStatus(id, body);
   }
 }

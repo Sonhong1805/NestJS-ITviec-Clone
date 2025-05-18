@@ -17,6 +17,12 @@ import { ApplicantLocation } from 'src/databases/entities/applicant-location.ent
 import { ApplicantLocationRepository } from 'src/databases/repositories/applicant-location.repository';
 import { validateCVFile } from 'src/commons/utils/validateCVFile';
 import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
+import { ApplicationLocation } from 'src/databases/entities/application-location.entity';
+import { ChangeStatusDto } from './dto/change-status.dto';
+import { Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
+import { CompanyRepository } from 'src/databases/repositories/company.repository';
+import { UserRepository } from 'src/databases/repositories/user.repository';
 
 @Injectable()
 export class ApplicationService {
@@ -27,6 +33,9 @@ export class ApplicationService {
     private readonly storageService: StorageService,
     private readonly dataSource: DataSource,
     private readonly applicantLocationRepository: ApplicantLocationRepository,
+    private readonly companyRepository: CompanyRepository,
+    private readonly userRepository: UserRepository,
+    @InjectQueue('mail-queue') private mailQueue: Queue,
   ) {}
 
   async create(
@@ -35,7 +44,7 @@ export class ApplicationService {
     body: CreateApplicationDto,
     user: User,
   ) {
-    const { fullName, phoneNumber, coverLetter, locations } = body;
+    const { fullName, email, phoneNumber, coverLetter, locations } = body;
 
     const findJob = await this.jobRepository.findOneBy({
       slug,
@@ -64,11 +73,20 @@ export class ApplicationService {
 
     let cv = findApplicant.cv;
     if (file) {
-      await this.storageService.deleteFile(findApplicant.cv);
+      const cvUsageCount = await this.applicationRepository.count({
+        where: {
+          cv: findApplicant.cv,
+          applicantId: findApplicant.id,
+        },
+      });
+
+      if (findApplicant.cv && cvUsageCount === 0) {
+        await this.storageService.deleteFile(findApplicant.cv);
+      }
 
       const { contentType } = validateCVFile(file);
       const filePath = `/cvs/${Date.now()}/${file.originalname}`;
-      const uploadResult = await this.storageService.uploadFile(
+      const uploadResult = this.storageService.uploadFile(
         filePath,
         file.buffer,
         {
@@ -87,12 +105,19 @@ export class ApplicationService {
       const newApplication = await queryRunner.manager.save(Application, {
         jobId: findJob.id,
         applicantId: findApplicant.id,
+        cv,
         fullName,
+        phoneNumber,
         coverLetter,
         status: 'pending',
       });
 
-      delete body.locations;
+      const applicationLocations = locations.map((location) => ({
+        applicationId: newApplication.id,
+        location,
+      }));
+
+      await queryRunner.manager.save(ApplicationLocation, applicationLocations);
 
       const applicantLocations = locations.map((location) => ({
         applicantId: findApplicant.id,
@@ -122,6 +147,18 @@ export class ApplicationService {
       );
       await queryRunner.commitTransaction();
 
+      if (newApplication) {
+        const findCompany = await this.companyRepository.findOneBy({
+          id: findJob.companyId,
+        });
+        await this.mailQueue.add('application-success', {
+          username: fullName,
+          email,
+          job: findJob.title,
+          company: findCompany.name,
+        });
+      }
+
       return {
         message: 'Create application successfully',
         result: newApplication,
@@ -133,32 +170,17 @@ export class ApplicationService {
     }
   }
 
-  async getAllByJob(jobId: number, user: User) {
-    const findJob = await this.jobRepository.findOne({
-      where: {
-        id: jobId,
-      },
-      relations: ['company'],
-    });
+  async delete(id: number) {
+    await this.applicationRepository.softDelete(id);
 
-    if (!findJob) {
-      throw new HttpException('Job not found', HttpStatus.NOT_FOUND);
-    }
-
-    if (findJob.company.userId !== user.id) {
-      throw new HttpException('company not access', HttpStatus.FORBIDDEN);
-    }
-
-    const result = await this.applicationRepository.find({
-      where: {
-        jobId,
-      },
-      relations: ['applicant'],
+    const deletedApplication = await this.applicationRepository.findOne({
+      where: { id },
+      withDeleted: true,
     });
 
     return {
-      message: 'Get all application by Job',
-      result,
+      message: 'Deleted application successfully',
+      result: deletedApplication.deletedAt,
     };
   }
 
@@ -253,6 +275,44 @@ export class ApplicationService {
         pagination,
         data: signedJobs,
       },
+    };
+  }
+
+  async changeStatus(id: number, body: ChangeStatusDto) {
+    const { status, fullName, jobId, applicantId } = body;
+    await this.applicationRepository.update({ id }, { status });
+
+    const findJob = await this.jobRepository.findOneBy({ id: jobId });
+    const findApplicant = await this.applicantRepository.findOneBy({
+      id: applicantId,
+    });
+    const findUser = await this.userRepository.findOneBy({
+      id: findApplicant.userId,
+    });
+
+    const findCompany = await this.companyRepository.findOneBy({
+      id: findJob.companyId,
+    });
+
+    if (status === 'accepted') {
+      await this.mailQueue.add('cv-accepted', {
+        username: fullName,
+        email: findUser.email,
+        job: findJob.title,
+        company: findCompany.name,
+      });
+    } else {
+      await this.mailQueue.add('cv-reject', {
+        username: fullName,
+        email: findUser.email,
+        job: findJob.title,
+        company: findCompany.name,
+      });
+    }
+
+    return {
+      message: `${status} this cv successfully`,
+      result: status,
     };
   }
 }

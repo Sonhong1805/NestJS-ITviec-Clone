@@ -15,6 +15,10 @@ export class CreateApplicationDto {
   fullName: string;
 
   @ApiProperty({ required: false })
+  @IsOptional()
+  email: string;
+
+  @ApiProperty({ required: false })
   @IsString()
   @IsNotEmpty()
   phoneNumber: string;
