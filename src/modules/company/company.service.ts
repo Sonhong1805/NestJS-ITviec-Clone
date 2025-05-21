@@ -12,7 +12,16 @@ import { IndustryRepository } from 'src/databases/repositories/industry.reposito
 import { ReviewCompanyDto } from './dto/review-company.dto';
 import { CompanyReviewRepository } from 'src/databases/repositories/company-review.repository';
 import { CompanyReviewQueryDto } from './dto/company-review-query.dto';
-import { DataSource } from 'typeorm';
+import {
+  Brackets,
+  DataSource,
+  In,
+  IsNull,
+  LessThan,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Not,
+} from 'typeorm';
 import { convertToSlug } from 'src/commons/utils/convertToSlug';
 import { Company } from 'src/databases/entities/company.entity';
 import { UserRepository } from 'src/databases/repositories/user.repository';
@@ -22,12 +31,17 @@ import { Skill } from 'src/databases/entities/skill.entity';
 import { CompanyFollowRepository } from 'src/databases/repositories/company-follow.repository';
 import { JobRepository } from 'src/databases/repositories/job.repository';
 import { CompanyQueriesDto } from './dto/company-queries.dto';
-import { JobQueriesDto } from './dto/job-queries.dto';
-import { convertKeySortJob } from 'src/commons/utils/helper';
+import {
+  convertKeySortApplication,
+  convertKeySortJob,
+} from 'src/commons/utils/helper';
 import { ApplicationRepository } from 'src/databases/repositories/application.repository';
 import { AllCVQueriesDto } from './dto/all-cv-queries.dto';
 import { AllReviewQueriesDto } from './dto/all-review-queries.dto';
 import { ChangeStatusReviewDto } from './dto/change-status-review.dto';
+import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
+import { WishlistRepository } from 'src/databases/repositories/wishlist.repository';
+import { AllJobQueriesDto } from './dto/all-job-queries.dto';
 
 @Injectable()
 export class CompanyService {
@@ -42,7 +56,103 @@ export class CompanyService {
     private readonly companyFollowRepository: CompanyFollowRepository,
     private readonly jobRepository: JobRepository,
     private readonly applicationRepository: ApplicationRepository,
+    private readonly applicantRepository: ApplicantRepository,
+    private readonly wishlistRepository: WishlistRepository,
   ) {}
+
+  async dashboard(user: User) {
+    const findCompany = await this.companyRepository.findOneBy({
+      userId: user.id,
+    });
+
+    if (!findCompany) {
+      throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
+    }
+
+    const now = new Date();
+
+    const [
+      totalJobs,
+      jobActive,
+      jobExpired,
+      totalCVs,
+      cvAccepted,
+      cvPending,
+      totalReviews,
+      totalFollows,
+    ] = await Promise.all([
+      this.jobRepository.count({
+        where: { companyId: findCompany.id },
+      }),
+      this.jobRepository.count({
+        where: {
+          companyId: findCompany.id,
+          startDate: LessThanOrEqual(now),
+          endDate: MoreThanOrEqual(now),
+        },
+      }),
+      this.jobRepository.count({
+        where: {
+          companyId: findCompany.id,
+          endDate: LessThan(now),
+        },
+      }),
+      this.applicationRepository.count({
+        where: {
+          job: {
+            companyId: findCompany.id,
+          },
+        },
+        relations: { job: true },
+      }),
+      this.applicationRepository.count({
+        where: {
+          job: {
+            companyId: findCompany.id,
+          },
+          status: 'accepted',
+        },
+        relations: { job: true },
+      }),
+      this.applicationRepository.count({
+        where: {
+          job: {
+            companyId: findCompany.id,
+          },
+          status: 'pending',
+        },
+        relations: { job: true },
+      }),
+      this.companyReviewRepository.count({
+        where: { companyId: findCompany.id },
+      }),
+      this.companyFollowRepository.count({
+        where: { companyId: findCompany.id },
+      }),
+    ]);
+
+    return {
+      message: 'get company dashboard successfully',
+      result: {
+        job: {
+          totalJobs,
+          jobActive,
+          jobExpired,
+        },
+        cv: {
+          totalCVs,
+          cvAccepted,
+          cvPending,
+        },
+        review: {
+          totalReviews,
+        },
+        follow: {
+          totalFollows,
+        },
+      },
+    };
+  }
 
   async update(
     id: number,
@@ -253,58 +363,112 @@ export class CompanyService {
       );
     }
 
-    const jobQueryBuilder = await this.jobRepository
-      .createQueryBuilder('job')
-      .leftJoin('job.company', 'company')
-      .leftJoin('job.jobSkills', 'jobSkill')
-      .leftJoin('jobSkill.skill', 'skill')
-      .leftJoin('company.industry', 'industry')
-      .select([
-        'job.id AS "id"',
-        'job.title AS "title"',
-        'job.label AS "label"',
-        'job.slug AS "slug"',
-        'job.minSalary AS "minSalary"',
-        'job.maxSalary AS "maxSalary"',
-        'job.currencySalary AS "currencySalary"',
-        'job.level AS "level"',
-        'job.location AS "location"',
-        'job.workingModel AS "workingModel"',
-        'job.description AS "description"',
-        'job.requirement AS "requirement"',
-        'job.address AS "address"',
-        'job.reason AS "reason"',
-        'job.startDate AS "startDate"',
-        'job.endDate AS "endDate"',
-        'job.createdAt AS "createdAt"',
-        'job.updatedAt AS "updatedAt"',
-        'job.deletedAt AS "deletedAt"',
-        `json_build_object(
-          'id', company.id,
-          'companyName', company.name,
-          'tagline', company.tagline,
-          'slug', company.slug,
-          'location', company.location,
-          'companyType', company.companyType,
-          'overtimePolicy', company.overtimePolicy,
-          'companySize', company.companySize,
-          'workingDay', company.workingDay,
-          'website', company.website,
-          'country', company.country,
-          'logo', company.logo,
-          'industry', json_build_object(
-            'id', industry.id,
-            'name_en', industry.name_en,
-            'name_vi', industry.name_vi
-          )
-        ) AS company`,
-        "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
-      ])
-      .where('company.id = :id', { id: findCompany.id })
-      .groupBy('job.id, company.id, industry.id');
+    const findApplicant = await this.applicantRepository.findOneBy({
+      id: user.id,
+    });
 
-    const findJobs = await jobQueryBuilder.getRawMany();
-    findCompany.jobs = findJobs;
+    if (findApplicant) {
+      const jobQueryBuilder = await this.jobRepository
+        .createQueryBuilder('job')
+        .leftJoin('job.company', 'company')
+        .leftJoin('job.jobSkills', 'jobSkill')
+        .leftJoin('jobSkill.skill', 'skill')
+        .leftJoin('company.industry', 'industry')
+        .select([
+          'job.id AS "id"',
+          'job.title AS "title"',
+          'job.label AS "label"',
+          'job.slug AS "slug"',
+          'job.minSalary AS "minSalary"',
+          'job.maxSalary AS "maxSalary"',
+          'job.currencySalary AS "currencySalary"',
+          'job.level AS "level"',
+          'job.location AS "location"',
+          'job.workingModel AS "workingModel"',
+          'job.description AS "description"',
+          'job.requirement AS "requirement"',
+          'job.address AS "address"',
+          'job.reason AS "reason"',
+          'job.startDate AS "startDate"',
+          'job.endDate AS "endDate"',
+          'job.createdAt AS "createdAt"',
+          'job.updatedAt AS "updatedAt"',
+          'job.deletedAt AS "deletedAt"',
+          `json_build_object(
+                  'id', company.id,
+                  'companyName', company.name,
+                  'tagline', company.tagline,
+                  'slug', company.slug,
+                  'location', company.location,
+                  'companyType', company.companyType,
+                  'overtimePolicy', company.overtimePolicy,
+                  'companySize', company.companySize,
+                  'workingDay', company.workingDay,
+                  'website', company.website,
+                  'country', company.country,
+                  'logo', company.logo,
+                  'industry', json_build_object(
+                    'id', industry.id,
+                    'name_en', industry.name_en,
+                    'name_vi', industry.name_vi
+                  )
+                ) AS company`,
+          "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
+        ])
+        .where('company.id = :id', { id: findCompany.id })
+        .groupBy('job.id, company.id, industry.id')
+        .addOrderBy('job.startDate', 'DESC');
+
+      const findJobs = await jobQueryBuilder.getRawMany();
+
+      const signedJobs = await Promise.all(
+        findJobs.map(async (jobItem) => {
+          const logoKey = jobItem.company.logo;
+          const companyName = jobItem.company.name;
+
+          let signedLogoUrl: string | null = null;
+          if (logoKey) {
+            signedLogoUrl = await this.storageService.getSignedUrl(logoKey);
+          }
+
+          jobItem.company = {
+            ...(jobItem.company as any),
+            companyName,
+            logo: signedLogoUrl,
+          };
+
+          if (user) {
+            jobItem['wishlist'] = false;
+
+            const findWishlist = await this.wishlistRepository.findOne({
+              where: {
+                userId: user.id,
+                jobId: jobItem.id,
+              },
+            });
+            if (findWishlist) {
+              jobItem['wishlist'] = true;
+            }
+
+            jobItem['hasApplied'] = null;
+            const findApplicant = await this.applicantRepository.findOneBy({
+              id: user.id,
+            });
+            const findApplication = await this.applicationRepository.findOne({
+              where: {
+                applicantId: findApplicant.id,
+                jobId: jobItem.id,
+              },
+            });
+            if (findApplication) {
+              jobItem['hasApplied'] = findApplication;
+            }
+          }
+          return jobItem;
+        }),
+      );
+      findCompany.jobs = signedJobs;
+    }
 
     if (user) {
       const findFollow = await this.companyFollowRepository.findOne({
@@ -469,28 +633,14 @@ export class CompanyService {
     };
   }
 
-  async getJobs(queries: JobQueriesDto, user: User) {
-    const {
-      page,
-      limit,
-      keyword,
-      city,
-      companyTypes,
-      levels,
-      industryIds,
-      minSalary,
-      maxSalary,
-      workingModels,
-      sort,
-      industries,
-    } = queries;
-    console.log(queries);
+  async getAllJob(queries: AllJobQueriesDto, user: User) {
+    const { page, limit, sort, levels, status, currencies } = queries;
 
     const findCompany = await this.companyRepository.findOneBy({
       userId: user.id,
     });
     if (!findCompany) {
-      throw new HttpException('company not found', HttpStatus.NOT_FOUND);
+      throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
     }
 
     const skip = (page - 1) * limit;
@@ -527,27 +677,24 @@ export class CompanyService {
       .where('job.companyId = :companyId', { companyId: findCompany.id })
       .groupBy('job.id, company.id, industry.id');
 
-    if (keyword) {
-      queryBuilder
-        .andWhere(
-          `EXISTS (
-            SELECT 1 FROM job_skills
-            JOIN skills ON job_skills.skill_id = skills.id
-            WHERE job_skills.job_id = job.id
-            AND skills.name ILIKE :keyword
-          )`,
-          { keyword: `%${keyword}%` },
-        )
-        .orWhere('job.title ILIKE :keyword', {
-          keyword: `%${keyword}%`,
-        })
-        .orWhere('job.slug ILIKE :keyword', {
-          keyword: `%${keyword}%`,
-        })
-        .orWhere('company.name ILIKE :keyword', {
-          keyword: `%${keyword}%`,
-        });
+    if (status) {
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          if (status.includes('deleted')) {
+            qb.orWhere('job.deletedAt IS NOT NULL');
+          }
+
+          if (status.includes('expired')) {
+            qb.orWhere('job.endDate < NOW() AND job.deletedAt IS NULL');
+          }
+
+          if (status.includes('active')) {
+            qb.orWhere('job.endDate >= NOW() AND job.deletedAt IS NULL');
+          }
+        }),
+      );
     }
+
     if (sort) {
       const order = convertKeySortJob(sort);
 
@@ -557,45 +704,17 @@ export class CompanyService {
     } else {
       queryBuilder.addOrderBy('job.createdAt', 'DESC');
     }
-    if (city) {
-      queryBuilder.andWhere('job.location = :city', {
-        city,
-      });
-    }
-    if (companyTypes) {
-      queryBuilder.andWhere('company.companyType IN (:...types)', {
-        types: companyTypes,
-      });
-    }
+
     if (levels) {
       queryBuilder.andWhere('job.level IN (:...levels)', {
         levels,
       });
     }
-    if (workingModels) {
-      queryBuilder.andWhere('job.workingModel IN (:...workingModels)', {
-        workingModels,
+
+    if (currencies) {
+      queryBuilder.andWhere('job.currencySalary IN (:...currencies)', {
+        currencies,
       });
-    }
-    if (industryIds) {
-      queryBuilder.andWhere('company.industry IN (:...industryIds)', {
-        industryIds,
-      });
-    }
-    if (industries) {
-      queryBuilder.andWhere(
-        '(industry.name_en IN (:...industries) OR industry.name_vi IN (:...industries))',
-        { industries },
-      );
-    }
-    if (minSalary && maxSalary) {
-      queryBuilder
-        .andWhere('job.minSalary >= :minSalary', {
-          minSalary,
-        })
-        .andWhere('job.maxSalary <= :maxSalary', {
-          maxSalary,
-        });
     }
 
     queryBuilder.limit(limit).offset(skip);
@@ -620,7 +739,6 @@ export class CompanyService {
   }
 
   async getAllCV(queries: AllCVQueriesDto, user: User) {
-    const { page, limit, sort } = queries;
     const findCompany = await this.companyRepository.findOneBy({
       userId: user.id,
     });
@@ -628,6 +746,7 @@ export class CompanyService {
       throw new HttpException('company not found', HttpStatus.NOT_FOUND);
     }
 
+    const { page, limit, sort, status } = queries;
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.applicationRepository
@@ -654,7 +773,52 @@ export class CompanyService {
       .where('job.companyId = :companyId', { companyId: findCompany.id })
       .groupBy('application.id, job.id');
 
-    queryBuilder.addOrderBy('application.createdAt', 'DESC');
+    if (sort) {
+      const order = convertKeySortApplication(sort);
+      for (const key of Object.keys(order)) {
+        queryBuilder.addOrderBy(`${key}`, order[key]);
+      }
+    } else {
+      queryBuilder.addOrderBy('application.createdAt', 'DESC');
+    }
+
+    if (status) {
+      const statusArray = Array.isArray(status) ? status : [status];
+
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          // Nếu có 'deleted' thì lấy những bản ghi đã bị xóa
+          if (statusArray.includes('deleted')) {
+            qb.orWhere('application.deletedAt IS NOT NULL');
+          }
+
+          // Nếu có status hợp lệ khác, ví dụ 'pending', thì lọc status đó + chưa bị xóa
+          const validStatuses = statusArray.filter(
+            (s) => s !== 'deleted' && s !== 'expired',
+          );
+          if (validStatuses.length > 0) {
+            qb.orWhere(
+              new Brackets((q) => {
+                q.where('application.status IN (:...status)', {
+                  status: validStatuses,
+                }).andWhere('application.deletedAt IS NULL');
+              }),
+            );
+          }
+
+          // Nếu có 'expired' thì thêm điều kiện job.endDate < NOW() và chưa bị xóa
+          if (statusArray.includes('expired')) {
+            qb.orWhere(
+              new Brackets((q) => {
+                q.where('job.endDate < NOW()').andWhere(
+                  'application.deletedAt IS NULL',
+                );
+              }),
+            );
+          }
+        }),
+      );
+    }
 
     queryBuilder.limit(limit).offset(skip);
     const data = await queryBuilder.getRawMany();
@@ -698,13 +862,34 @@ export class CompanyService {
       throw new HttpException('Company not found', HttpStatus.NOT_FOUND);
     }
 
-    const { limit, page, sort } = queries;
+    const { limit, page, sort, status } = queries;
+
+    const statusArray = status ?? [];
+    const includeDeleted = statusArray.includes('deleted');
+    const otherStatuses = statusArray.filter((s) => s !== 'deleted');
+
+    const where: any = {
+      companyId: findCompany.id,
+    };
+    if (includeDeleted && otherStatuses.length > 0) {
+      where.deletedAt = Not(IsNull());
+      where.status = In(otherStatuses);
+    } else if (includeDeleted) {
+      where.deletedAt = Not(IsNull());
+    } else if (otherStatuses.length > 0) {
+      where.status = In(otherStatuses);
+      where.deletedAt = IsNull();
+    }
+
+    const isValidSort =
+      sort &&
+      Object.entries(sort).some(([key, value]) => key && value !== undefined);
     const skip = (page - 1) * limit;
     const [data, totalItems] = await this.companyReviewRepository.findAndCount({
-      where: { companyId: findCompany.id },
+      where,
       relations: { user: true },
       withDeleted: true,
-      order: { createdAt: 'DESC' },
+      order: isValidSort ? sort : { createdAt: 'DESC' },
       skip,
       take: limit,
     });

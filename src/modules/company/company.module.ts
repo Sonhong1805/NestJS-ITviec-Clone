@@ -10,6 +10,8 @@ import { CompanySkillRepository } from 'src/databases/repositories/company-skill
 import { CompanyFollowRepository } from 'src/databases/repositories/company-follow.repository';
 import { JobRepository } from 'src/databases/repositories/job.repository';
 import { ApplicationRepository } from 'src/databases/repositories/application.repository';
+import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
+import { WishlistRepository } from 'src/databases/repositories/wishlist.repository';
 
 @Module({
   controllers: [CompanyController],
@@ -24,6 +26,8 @@ import { ApplicationRepository } from 'src/databases/repositories/application.re
     CompanyFollowRepository,
     ApplicationRepository,
     JobRepository,
+    ApplicantRepository,
+    WishlistRepository,
   ],
 })
 export class CompanyModule {}

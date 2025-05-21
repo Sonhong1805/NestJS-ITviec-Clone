@@ -299,7 +299,6 @@ export class JobService {
       sort,
       industries,
     } = queries;
-    console.log(queries);
 
     const skip = (page - 1) * limit;
 

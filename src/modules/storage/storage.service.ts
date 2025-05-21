@@ -29,7 +29,7 @@ export class StorageService {
     };
   }
 
-  async getSignedUrl(key: string, expireIn = 600) {
+  async getSignedUrl(key: string, expireIn = 30 * 60) {
     const { data, error } = await this.client.storage
       .from(this.bucket)
       .createSignedUrl(key, expireIn);

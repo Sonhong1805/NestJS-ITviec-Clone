@@ -21,6 +21,7 @@ import { StorageService } from '../storage/storage.service';
     CompanyRepository,
     MailService,
     StorageService,
+    CompanyRepository,
   ],
   exports: [BullModule],
 })

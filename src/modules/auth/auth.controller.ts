@@ -83,7 +83,7 @@ export class AuthController {
     return this.authService.resetPassword(body);
   }
 
-  @Roles(ROLE.APPLICANT)
+  @Roles(ROLE.ADMIN, ROLE.APPLICANT, ROLE.COMPANY)
   @Post('change-password')
   changePassword(@Body() body: ChangePasswordDto, @GetUser() user: User) {
     return this.authService.changePassword(body, user);

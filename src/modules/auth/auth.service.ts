@@ -28,6 +28,8 @@ import { generateRandomCode, randomPassword } from 'src/commons/utils/random';
 import { convertToSlug } from 'src/commons/utils/convertToSlug';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
+import { StorageService } from '../storage/storage.service';
+import { CompanyRepository } from 'src/databases/repositories/company.repository';
 
 @Injectable()
 export class AuthService {
@@ -37,6 +39,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
+    private readonly storageService: StorageService,
+    private readonly companyRepository: CompanyRepository,
     @InjectQueue('mail-queue') private mailQueue: Queue,
   ) {}
 
@@ -137,16 +141,7 @@ export class AuthService {
       maxAge: ms(this.configService.get('jwt').refreshTokenExpires),
     });
 
-    // const findApplicant = await this.applicantRepository.findOneBy({
-    //   userId: id,
-    // });
-
-    // payload['avatar'] = '';
-    // if (findApplicant.avatar) {
-    //   payload['avatar'] = await this.storageService.getSignedUrl(
-    //     findApplicant.avatar,
-    //   );
-    // }
+    payload['avatar'] = await this.getAvatar(findUser.id);
 
     return {
       message: 'Login successfully',
@@ -167,16 +162,7 @@ export class AuthService {
     delete userInfo.password;
     delete userInfo.refreshToken;
 
-    // const findApplicant = await this.applicantRepository.findOneBy({
-    //   userId: user.id,
-    // });
-
-    // userInfo['avatar'] = '';
-    // if (findApplicant.avatar) {
-    //   userInfo['avatar'] = await this.storageService.getSignedUrl(
-    //     findApplicant.avatar,
-    //   );
-    // }
+    userInfo['avatar'] = await this.getAvatar(user.id);
 
     return {
       message: 'get user info successfully',
@@ -184,15 +170,23 @@ export class AuthService {
     };
   }
 
+  async getAvatar(userId: number): Promise<string> {
+    const findApplicant = await this.applicantRepository.findOneBy({ userId });
+    if (findApplicant?.avatar) {
+      return await this.storageService.getSignedUrl(findApplicant.avatar);
+    }
+    const findCompany = await this.companyRepository.findOneBy({ userId });
+    if (findCompany?.logo) {
+      return await this.storageService.getSignedUrl(findCompany.logo);
+    }
+    return '';
+  }
+
   async refresh(request: Request, response: Response) {
     const refreshTokenCookie = request.cookies['refresh_token'];
 
     if (!refreshTokenCookie) {
       throw new BadRequestException('token invalid');
-    }
-
-    if (!refreshTokenCookie) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
 
     const findUser = await this.userRepository.findOne({
@@ -229,16 +223,7 @@ export class AuthService {
         },
       );
 
-      // const findApplicant = await this.applicantRepository.findOneBy({
-      //   userId: id,
-      // });
-
-      // payload['avatar'] = '';
-      // if (findApplicant.avatar) {
-      //   payload['avatar'] = await this.storageService.getSignedUrl(
-      //     findApplicant.avatar,
-      //   );
-      // }
+      payload['avatar'] = await this.getAvatar(findUser.id);
 
       response.cookie('refresh_token', newRefreshToken, {
         httpOnly: true,
