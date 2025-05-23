@@ -14,12 +14,15 @@ import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   validateEnvironments();
+
   const app = await NestFactory.create<NestExpressApplication>(
     AppModule,
     // {
     //   cors: true,
     // }
   );
+
+  const configService = app.get(ConfigService);
 
   const apiPrefix = 'api/v1';
   const apiVersion = '1.0';
@@ -31,7 +34,7 @@ async function bootstrap() {
   app.use(cookieParser());
   app.use(helmet());
   app.enableCors({
-    origin: 'http://localhost:5173',
+    origin: configService.get<string>('CLIENT_URL') || 'http://localhost:5173',
     credentials: true,
     preflightContinue: false,
     exposedHeaders: ['Content-Disposition'],
@@ -62,7 +65,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3001;
   await app.listen(port);
   Logger.log(`Application started on port: ${port}`);
