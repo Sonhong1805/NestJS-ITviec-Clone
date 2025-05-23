@@ -335,7 +335,6 @@ export class CompanyService {
         'company.companyType as "companyType"',
         'company.workingDay as "workingDay"',
         'company.overtimePolicy as "overtimePolicy"',
-        'company.isActive as "isActive"',
         `json_build_object(
           'id', industry.id,
           'name_en', industry.name_en,
@@ -363,112 +362,93 @@ export class CompanyService {
       );
     }
 
-    const findApplicant = await this.applicantRepository.findOneBy({
-      id: user.id,
-    });
+    const jobQueryBuilder = await this.jobRepository
+      .createQueryBuilder('job')
+      .leftJoin('job.company', 'company')
+      .leftJoin('job.jobSkills', 'jobSkill')
+      .leftJoin('jobSkill.skill', 'skill')
+      .leftJoin('company.industry', 'industry')
+      .select([
+        'job.id AS "id"',
+        'job.title AS "title"',
+        'job.label AS "label"',
+        'job.slug AS "slug"',
+        'job.minSalary AS "minSalary"',
+        'job.maxSalary AS "maxSalary"',
+        'job.currencySalary AS "currencySalary"',
+        'job.level AS "level"',
+        'job.location AS "location"',
+        'job.workingModel AS "workingModel"',
+        'job.description AS "description"',
+        'job.requirement AS "requirement"',
+        'job.address AS "address"',
+        'job.reason AS "reason"',
+        'job.startDate AS "startDate"',
+        'job.endDate AS "endDate"',
+        'job.createdAt AS "createdAt"',
+        'job.updatedAt AS "updatedAt"',
+        'job.deletedAt AS "deletedAt"',
+        `json_build_object(
+              'id', company.id,
+              'companyName', company.name,
+              'tagline', company.tagline,
+              'slug', company.slug,
+              'location', company.location,
+              'companyType', company.companyType,
+              'overtimePolicy', company.overtimePolicy,
+              'companySize', company.companySize,
+              'workingDay', company.workingDay,
+              'website', company.website,
+              'country', company.country,
+              'logo', company.logo,
+              'industry', json_build_object(
+                'id', industry.id,
+                'name_en', industry.name_en,
+                'name_vi', industry.name_vi
+              )
+            ) AS company`,
+        "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
+      ])
+      .where('company.id = :id', { id: findCompany.id })
+      .groupBy('job.id, company.id, industry.id')
+      .andWhere('job.startDate <= :now', { now: new Date() })
+      .andWhere('job.endDate >= :now', { now: new Date() })
+      .addOrderBy('job.startDate', 'DESC');
 
-    if (findApplicant) {
-      const jobQueryBuilder = await this.jobRepository
-        .createQueryBuilder('job')
-        .leftJoin('job.company', 'company')
-        .leftJoin('job.jobSkills', 'jobSkill')
-        .leftJoin('jobSkill.skill', 'skill')
-        .leftJoin('company.industry', 'industry')
-        .select([
-          'job.id AS "id"',
-          'job.title AS "title"',
-          'job.label AS "label"',
-          'job.slug AS "slug"',
-          'job.minSalary AS "minSalary"',
-          'job.maxSalary AS "maxSalary"',
-          'job.currencySalary AS "currencySalary"',
-          'job.level AS "level"',
-          'job.location AS "location"',
-          'job.workingModel AS "workingModel"',
-          'job.description AS "description"',
-          'job.requirement AS "requirement"',
-          'job.address AS "address"',
-          'job.reason AS "reason"',
-          'job.startDate AS "startDate"',
-          'job.endDate AS "endDate"',
-          'job.createdAt AS "createdAt"',
-          'job.updatedAt AS "updatedAt"',
-          'job.deletedAt AS "deletedAt"',
-          `json_build_object(
-                  'id', company.id,
-                  'companyName', company.name,
-                  'tagline', company.tagline,
-                  'slug', company.slug,
-                  'location', company.location,
-                  'companyType', company.companyType,
-                  'overtimePolicy', company.overtimePolicy,
-                  'companySize', company.companySize,
-                  'workingDay', company.workingDay,
-                  'website', company.website,
-                  'country', company.country,
-                  'logo', company.logo,
-                  'industry', json_build_object(
-                    'id', industry.id,
-                    'name_en', industry.name_en,
-                    'name_vi', industry.name_vi
-                  )
-                ) AS company`,
-          "JSON_AGG(json_build_object('id', skill.id, 'name', skill.name)) AS skills",
-        ])
-        .where('company.id = :id', { id: findCompany.id })
-        .groupBy('job.id, company.id, industry.id')
-        .addOrderBy('job.startDate', 'DESC');
+    const findJobs = await jobQueryBuilder.getRawMany();
 
-      const findJobs = await jobQueryBuilder.getRawMany();
+    let signedJobs = await Promise.all(
+      findJobs.map(async (jobItem) => {
+        const logoKey = jobItem.company.logo;
 
-      const signedJobs = await Promise.all(
-        findJobs.map(async (jobItem) => {
-          const logoKey = jobItem.company.logo;
-          const companyName = jobItem.company.name;
+        let signedLogoUrl: string | null = null;
+        if (logoKey) {
+          signedLogoUrl = await this.storageService.getSignedUrl(logoKey);
+        }
 
-          let signedLogoUrl: string | null = null;
-          if (logoKey) {
-            signedLogoUrl = await this.storageService.getSignedUrl(logoKey);
+        jobItem.company = {
+          ...(jobItem.company as any),
+          logo: signedLogoUrl,
+        };
+
+        if (user) {
+          jobItem['wishlist'] = false;
+
+          const findWishlist = await this.wishlistRepository.findOne({
+            where: {
+              userId: user.id,
+              jobId: jobItem.id,
+            },
+          });
+          if (findWishlist) {
+            jobItem['wishlist'] = true;
           }
+        }
+        return jobItem;
+      }),
+    );
 
-          jobItem.company = {
-            ...(jobItem.company as any),
-            companyName,
-            logo: signedLogoUrl,
-          };
-
-          if (user) {
-            jobItem['wishlist'] = false;
-
-            const findWishlist = await this.wishlistRepository.findOne({
-              where: {
-                userId: user.id,
-                jobId: jobItem.id,
-              },
-            });
-            if (findWishlist) {
-              jobItem['wishlist'] = true;
-            }
-
-            jobItem['hasApplied'] = null;
-            const findApplicant = await this.applicantRepository.findOneBy({
-              id: user.id,
-            });
-            const findApplication = await this.applicationRepository.findOne({
-              where: {
-                applicantId: findApplicant.id,
-                jobId: jobItem.id,
-              },
-            });
-            if (findApplication) {
-              jobItem['hasApplied'] = findApplication;
-            }
-          }
-          return jobItem;
-        }),
-      );
-      findCompany.jobs = signedJobs;
-    }
+    let applicationsMap = new Map<number, any>();
 
     if (user) {
       const findFollow = await this.companyFollowRepository.findOne({
@@ -488,7 +468,39 @@ export class CompanyService {
       });
 
       findCompany['review'] = !!findReview;
+
+      const findApplicant = await this.applicantRepository.findOne({
+        where: { userId: user.id },
+      });
+
+      if (findApplicant) {
+        const jobIds = signedJobs.map((item) => item.id);
+
+        const applications = await this.applicationRepository.find({
+          where: {
+            applicantId: findApplicant.id,
+            jobId: In(jobIds),
+          },
+        });
+
+        applicationsMap = new Map(applications.map((app) => [app.jobId, app]));
+        const wishlists = await this.wishlistRepository.find({
+          where: {
+            userId: user.id,
+            jobId: In(jobIds),
+          },
+        });
+        const wishlistIds = wishlists.map((item) => item.jobId);
+
+        signedJobs = signedJobs.map((item) => ({
+          ...item,
+          wishlist: wishlistIds.includes(item.id),
+          hasApplied: applicationsMap.get(item.id) ?? null,
+        }));
+      }
     }
+
+    findCompany.jobs = signedJobs;
 
     return {
       message: `Get company by ${!isNaN(+param) ? 'userId' : 'slug'} successfully`,
@@ -566,8 +578,16 @@ export class CompanyService {
         'company.slug as "slug"',
         'company.logo as "logo"',
         'company.location as "location"',
-        "jsonb_agg(DISTINCT jsonb_build_object('id',skill.id,'name', skill.name)) AS skills",
-        "jsonb_agg(DISTINCT jsonb_build_object('id',job.id,'title', job.title)) AS jobs",
+        `COALESCE(
+          jsonb_agg(
+            DISTINCT jsonb_build_object('id',skill.id,'name', skill.name)
+          ) FILTER (WHERE skill.id IS NOT NULL), '[]'
+        ) AS "skills"`,
+        `COALESCE(
+          jsonb_agg(
+            DISTINCT jsonb_build_object('id',job.id,'title', job.title)
+          ) FILTER (WHERE job.id IS NOT NULL), '[]'
+        ) AS "jobs"`,
       ])
       .groupBy('company.id');
     if (name) {

@@ -1,4 +1,4 @@
-export const randomPassword = (length = 12) => {
+export const randomPassword = (length = 24) => {
   let result = '';
   const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const lowercase = 'abcdefghijklmnopqrstuvwxyz';

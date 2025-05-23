@@ -7,96 +7,96 @@ export class MailProcessor extends WorkerHost {
   constructor(private readonly mailService: MailService) {
     super();
   }
-  async process(job: Job<any, any, string>): Promise<any> {
-    if (job.name === 'send-mail-applicant') {
+  async process(mail: Job<any, any, string>): Promise<any> {
+    if (mail.name === 'register-applicant') {
       await this.mailService.sendMail(
-        job.data.email,
-        'welcome to ITviec',
-        'welcome-applicant',
-        { name: job.data.name, email: job.data.email },
+        mail.data.email,
+        `Chào mừng ${mail.data.name} thuy đến với ITviec! Bước tiếp theo là...`,
+        'register-applicant',
+        { name: mail.data.name, email: mail.data.email },
       );
     }
 
-    if (job.name === 'send-mail-company') {
+    if (mail.name === 'register-company') {
       await this.mailService.sendMail(
-        job.data.email,
-        'welcome your company to ITviec',
-        'welcome-company',
+        mail.data.email,
+        `Welcome ${mail.data.name} to ITviec! The next step is...`,
+        'register-company',
         {
-          name: job.data.name,
-          email: job.data.email,
-          password: job.data.password,
-          company: job.data.company,
+          name: mail.data.name,
+          email: mail.data.email,
+          password: mail.data.password,
+          company: mail.data.company,
         },
       );
     }
-    if (job.name === 'forgot-password') {
+    if (mail.name === 'forgot-password') {
       await this.mailService.sendMail(
-        job.data.email,
-        `${job.data.email}, reset your password`,
+        mail.data.email,
+        `${mail.data.email}, reset your password`,
         'forgot-password',
         {
-          email: job.data.email,
-          path: job.data.path,
+          email: mail.data.email,
+          path: mail.data.path,
         },
       );
     }
-    if (job.name === 'change-password') {
+    if (mail.name === 'change-password') {
       await this.mailService.sendMail(
-        job.data.email,
-        `${job.data.email}, Your ITviec password has been changed`,
+        mail.data.email,
+        `${mail.data.email}, Your ITviec password has been changed`,
         'change-password',
         {
-          username: job.data.username,
-          email: job.data.email,
-          path: job.data.path,
+          username: mail.data.username,
+          email: mail.data.email,
+          path: mail.data.path,
         },
       );
     }
-    if (job.name === 'delete-account') {
+    if (mail.name === 'delete-account') {
       await this.mailService.sendMail(
-        job.data.email,
+        mail.data.email,
         `Confirm your account deletion for ITviec.com`,
         'delete-account',
         {
-          username: job.data.username,
-          code: job.data.code,
+          username: mail.data.username,
+          code: mail.data.code,
         },
       );
     }
-    if (job.name === 'application-success') {
+    if (mail.name === 'application-success') {
       await this.mailService.sendMail(
-        job.data.email,
-        `We received your CV for ${job.data.job} at ${job.data.company}`,
+        mail.data.email,
+        `We received your CV for ${mail.data.job} at ${mail.data.company}`,
         'application-success',
         {
-          username: job.data.username,
-          job: job.data.job,
-          company: job.data.company,
+          username: mail.data.username,
+          job: mail.data.job,
+          company: mail.data.company,
         },
       );
     }
-    if (job.name === 'cv-accepted') {
+    if (mail.name === 'cv-accepted') {
       await this.mailService.sendMail(
-        job.data.email,
-        `Cập nhật tình trạng hồ sơ của bạn cho vị trí ${job.data.job} tại ${job.data.company}`,
+        mail.data.email,
+        `Cập nhật tình trạng hồ sơ của bạn cho vị trí ${mail.data.job} tại ${mail.data.company}`,
         'cv-accepted',
         {
-          username: job.data.username,
-          job: job.data.job,
-          company: job.data.company,
+          username: mail.data.username,
+          job: mail.data.job,
+          company: mail.data.company,
         },
       );
     }
-    if (job.name === 'cv-reject') {
+    if (mail.name === 'cv-reject') {
       await this.mailService.sendMail(
-        job.data.email,
-        `Cập nhật tình trạng hồ sơ của bạn cho vị trí ${job.data.job} tại ${job.data.company}`,
+        mail.data.email,
+        `Cập nhật tình trạng hồ sơ của bạn cho vị trí ${mail.data.job} tại ${mail.data.company}`,
         'cv-reject',
         {
-          username: job.data.username,
-          job: job.data.job,
-          company: job.data.company,
+          username: mail.data.username,
+          job: mail.data.job,
+          company: mail.data.company,
         },
       );
     }

@@ -71,9 +71,6 @@ export class Company extends BaseEntity {
   @Column('integer', { name: 'industry_id', nullable: true, unique: true })
   industryId: number | null;
 
-  @Column('boolean', { name: 'is_active', nullable: true })
-  isActive: boolean | null;
-
   @ManyToOne(() => Industry, (industries) => industries.companies)
   @JoinColumn([{ name: 'industry_id', referencedColumnName: 'id' }])
   industry: Industry;

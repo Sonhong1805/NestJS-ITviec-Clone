@@ -6,3 +6,7 @@ npm run typeorm:run
 
 //revert
 npm run typeorm:revert
+
+//company account
+tk: fptsoftware@yopmail.com
+mk: d<M0~Sj6.bDW

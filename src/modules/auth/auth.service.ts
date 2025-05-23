@@ -64,10 +64,10 @@ export class AuthService {
       userId: newUser.id,
     });
 
-    // await this.mailQueue.add('send-mail-applicant', {
-    //   name: username,
-    //   email,
-    // });
+    await this.mailQueue.add('register-applicant', {
+      name: username,
+      email,
+    });
 
     return {
       message: 'Register user successfully',
@@ -141,7 +141,7 @@ export class AuthService {
       maxAge: ms(this.configService.get('jwt').refreshTokenExpires),
     });
 
-    payload['avatar'] = await this.getAvatar(findUser.id);
+    payload['avatar'] = await this.getAvatar(findUser);
 
     return {
       message: 'Login successfully',
@@ -162,7 +162,7 @@ export class AuthService {
     delete userInfo.password;
     delete userInfo.refreshToken;
 
-    userInfo['avatar'] = await this.getAvatar(user.id);
+    userInfo['avatar'] = await this.getAvatar(user);
 
     return {
       message: 'get user info successfully',
@@ -170,15 +170,23 @@ export class AuthService {
     };
   }
 
-  async getAvatar(userId: number): Promise<string> {
-    const findApplicant = await this.applicantRepository.findOneBy({ userId });
-    if (findApplicant?.avatar) {
+  async getAvatar(user: User): Promise<string> {
+    const findApplicant = await this.applicantRepository.findOneBy({
+      userId: user.id,
+    });
+    if (findApplicant?.avatar && user.loginType !== LOGIN_TYPE.GOOGLE) {
       return await this.storageService.getSignedUrl(findApplicant.avatar);
     }
-    const findCompany = await this.companyRepository.findOneBy({ userId });
+    if (findApplicant?.avatar && user.loginType === LOGIN_TYPE.GOOGLE) {
+      return findApplicant?.avatar;
+    }
+    const findCompany = await this.companyRepository.findOneBy({
+      userId: user.id,
+    });
     if (findCompany?.logo) {
       return await this.storageService.getSignedUrl(findCompany.logo);
     }
+
     return '';
   }
 
@@ -223,7 +231,7 @@ export class AuthService {
         },
       );
 
-      payload['avatar'] = await this.getAvatar(findUser.id);
+      payload['avatar'] = await this.getAvatar(findUser);
 
       response.cookie('refresh_token', newRefreshToken, {
         httpOnly: true,
@@ -396,7 +404,7 @@ export class AuthService {
       });
       await queryRunner.commitTransaction();
 
-      await this.mailQueue.add('send-mail-company', {
+      await this.mailQueue.add('register-company', {
         name: username,
         email,
         password,
