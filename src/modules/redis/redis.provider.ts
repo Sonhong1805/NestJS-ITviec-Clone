@@ -15,10 +15,6 @@ export const redisProvider: Provider[] = [
         tls: {},
         maxRetriesPerRequest: null,
         enableReadyCheck: true,
-        retryStrategy: (times) => {
-          if (times > 10) return null;
-          return Math.min(times * 100, 2000);
-        },
       });
 
       client.on('connect', () => {
