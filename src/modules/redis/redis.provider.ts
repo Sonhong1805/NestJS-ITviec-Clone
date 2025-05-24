@@ -10,13 +10,18 @@ export const redisProvider: Provider[] = [
     inject: [ConfigService],
     useFactory: (configService: ConfigService): RedisClient => {
       const REDIS_URI = configService.get('redisUri');
-      return new Redis(REDIS_URI, {
-        maxRetriesPerRequest: null, // Cho phép các lệnh chờ vô thời hạn khi Redis không phản hồi
-        retryStrategy: (times: number) => {
-          const delay = Math.min(times * 100, 3000); // Tăng dần thời gian chờ, tối đa 3 giây
-          return delay;
-        },
+
+      const client = new Redis(REDIS_URI, {
+        maxRetriesPerRequest: null,
+        enableOfflineQueue: false,
+        reconnectOnError: () => true,
+        tls: {},
       });
+
+      client.on('error', (err) => {
+        console.error('Redis error:', err);
+      });
+      return client;
     },
   },
 ];
