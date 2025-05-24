@@ -9,17 +9,27 @@ export const redisProvider: Provider[] = [
     provide: REDIS_CLIENT,
     inject: [ConfigService],
     useFactory: (configService: ConfigService): RedisClient => {
-      const REDIS_URI = configService.get('redisUri');
-      return new Redis(REDIS_URI, {
-        maxRetriesPerRequest: null, // vô hiệu hóa giới hạn retry
-        enableReadyCheck: false, // tùy chọn: bỏ kiểm tra 'ready'
+      const redisUri = configService.get<string>('REDIS_URI');
+
+      const client = new Redis(redisUri, {
+        tls: {},
+        maxRetriesPerRequest: null,
+        enableReadyCheck: true,
         retryStrategy: (times) => {
-          if (times >= 10) {
-            return null; // ngừng retry sau 10 lần
-          }
-          return Math.min(times * 100, 3000); // retry sau thời gian tăng dần
+          if (times > 10) return null;
+          return Math.min(times * 100, 2000);
         },
       });
+
+      client.on('connect', () => {
+        console.log('✅ Connected to Upstash Redis');
+      });
+
+      client.on('error', (err) => {
+        console.error('❌ Redis connection error:', err);
+      });
+
+      return client;
     },
   },
 ];
