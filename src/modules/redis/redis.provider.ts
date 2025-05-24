@@ -13,7 +13,7 @@ export const redisProvider: Provider[] = [
 
       const client = new Redis(REDIS_URI, {
         maxRetriesPerRequest: null,
-        enableOfflineQueue: false,
+        enableOfflineQueue: true,
         reconnectOnError: () => true,
         tls: {},
       });
